@@ -1,0 +1,361 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Panel de Control - WhatsApp Bots</title>
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>🤖 Gestor de Bots de WhatsApp</h1>
+      <div class="user-info">
+        <img src="<%= user.picture %>" alt="User" class="user-avatar">
+        <span><%= user.displayName %></span>
+        <a href="/sales" class="btn" style="background-color: var(--status-connected);">💼 Panel de Ventas</a>
+        <a href="/auth/logout" class="btn btn-secondary">Cerrar Sesión</a>
+      </div>
+    </header>
+
+    <main>
+        <div id="bots-container"></div>
+        <button id="create-bot-btn" class="btn">＋ Crear Nuevo Bot</button>
+    </main>
+  </div>
+
+  <!-- Plantilla para una tarjeta de bot -->
+  <template id="bot-card-template">
+    <div class="bot-card" data-bot-id="">
+      <button class="btn-close" title="Eliminar Bot">&times;</button>
+      <button class="btn-settings" title="Configuración">⚙️</button>
+      <div class="bot-header">
+        <h2 class="bot-name"></h2>
+        <div class="bot-status">
+          <span class="status-indicator"></span>
+          <span class="status-text"></span>
+        </div>
+      </div>
+      <div class="bot-body">
+        <div class="bot-info">
+          <p><strong>ID:</strong> <span class="bot-id"></span></p>
+          <p><strong>Puerto:</strong> <span class="bot-port"></span></p>
+        </div>
+        <div class="qr-container">
+          <img src="" alt="QR Code" class="qr-code">
+          <div class="connected-icon">✅</div>
+        </div>
+      </div>
+      <div class="bot-actions">
+        <button class="btn btn-small btn-edit" title="Editar Prompt">✏️ Editar</button>
+        <button class="btn btn-small btn-toggle"></button>
+      </div>
+    </div>
+  </template>
+
+  <!-- Modal para crear un nuevo bot -->
+  <div id="create-modal-backdrop" class="modal-backdrop">
+    <div id="create-bot-modal" class="modal">
+        <form id="create-bot-form">
+          <h2>Crear Nuevo Bot</h2>
+          <div class="form-group"><label for="bot-name">Nombre del Bot</label><input type="text" id="bot-name" name="name" placeholder="Ej: Asistente de Ventas" required></div>
+          <div class="form-group"><label for="bot-id">ID Único del Bot</label><input type="text" id="bot-id" name="id" placeholder="Ej: ventas-mx" required pattern="[a-zA-Z0-9-]+"><small>Solo letras, números y guiones.</small></div>
+          <div class="form-group"><label for="bot-prompt">Prompt del Sistema (IA)</label><textarea id="bot-prompt" name="prompt" rows="8" placeholder="Eres un asistente virtual amable y profesional..." required></textarea></div>
+          <div class="form-actions"><button type="button" id="create-cancel-btn" class="btn btn-secondary">Cancelar</button><button type="submit" class="btn">Guardar y Lanzar Bot</button></div>
+        </form>
+    </div>
+  </div>
+
+  <!-- Modal para editar el prompt de un bot -->
+  <div id="edit-modal-backdrop" class="modal-backdrop">
+    <div id="edit-bot-modal" class="modal">
+        <form id="edit-bot-form">
+          <h2>Editar Prompt del Bot</h2>
+          <p><strong>Bot ID:</strong> <span id="edit-bot-id-display"></span></p>
+          <div class="form-group"><label for="edit-bot-prompt">Prompt del Sistema (IA)</label><textarea id="edit-bot-prompt" name="prompt" required></textarea></div>
+          <div class="form-actions"><button type="button" id="edit-cancel-btn" class="btn btn-secondary">Cancelar</button><button type="submit" class="btn">Guardar Cambios</button></div>
+        </form>
+    </div>
+  </div>
+
+  <!-- Modal de Configuración de Funcionalidades -->
+  <div id="settings-modal-backdrop" class="settings-modal-backdrop">
+    <div id="settings-modal" class="settings-modal">
+      <h2>⚙️ Configuración del Bot</h2>
+      <p style="color: #888; margin-bottom: 1.5rem;">Bot ID: <strong id="settings-bot-id"></strong></p>
+
+      <div class="settings-section">
+        <h3>🎯 Funcionalidades Principales</h3>
+        
+        <div class="setting-item">
+          <div class="setting-info">
+            <div class="setting-title">⏰ Agendamiento</div>
+            <div class="setting-description">Programar habilitación/deshabilitación del bot</div>
+          </div>
+          <label class="toggle-switch">
+            <input type="checkbox" id="feature-scheduling">
+            <span class="toggle-slider"></span>
+          </label>
+        </div>
+
+        <div class="setting-item">
+          <div class="setting-info">
+            <div class="setting-title">
+              🤖 Respuestas Automáticas
+              <span class="feature-badge coming-soon">Próximamente</span>
+            </div>
+            <div class="setting-description">El bot responde automáticamente a los mensajes</div>
+          </div>
+          <label class="toggle-switch">
+            <input type="checkbox" id="feature-autoresponse" disabled>
+            <span class="toggle-slider"></span>
+          </label>
+        </div>
+
+        <div class="setting-item">
+          <div class="setting-info">
+            <div class="setting-title">
+              📋 Captura de Leads
+              <span class="feature-badge coming-soon">Próximamente</span>
+            </div>
+            <div class="setting-description">Extrae automáticamente información de contacto</div>
+          </div>
+          <label class="toggle-switch">
+            <input type="checkbox" id="feature-leadcapture" disabled>
+            <span class="toggle-slider"></span>
+          </label>
+        </div>
+
+        <div class="setting-item">
+          <div class="setting-info">
+            <div class="setting-title">
+              🕐 Horario de Trabajo
+              <span class="feature-badge coming-soon">Próximamente</span>
+            </div>
+            <div class="setting-description">Bot activo solo en horarios específicos</div>
+          </div>
+          <label class="toggle-switch">
+            <input type="checkbox" id="feature-workinghours" disabled>
+            <span class="toggle-slider"></span>
+          </label>
+        </div>
+      </div>
+
+      <div class="settings-actions">
+        <button type="button" id="settings-cancel-btn" class="btn btn-secondary">Cerrar</button>
+        <button type="button" id="settings-save-btn" class="btn">Guardar Cambios</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const currentUserEmail = '<%= user.email %>';
+
+    // --- Referencias a elementos del DOM ---
+    const botsContainer = document.getElementById('bots-container');
+    const botCardTemplate = document.getElementById('bot-card-template');
+    
+    // Modal de Creación
+    const createModalBackdrop = document.getElementById('create-modal-backdrop');
+    const createBotBtn = document.getElementById('create-bot-btn');
+    const createCancelBtn = document.getElementById('create-cancel-btn');
+    const createBotForm = document.getElementById('create-bot-form');
+
+    // Modal de Edición
+    const editModalBackdrop = document.getElementById('edit-modal-backdrop');
+    const editBotForm = document.getElementById('edit-bot-form');
+    const editCancelBtn = document.getElementById('edit-cancel-btn');
+    const editBotPromptTextarea = document.getElementById('edit-bot-prompt');
+    const editBotIdDisplay = document.getElementById('edit-bot-id-display');
+
+    // Modal de Configuración
+    const settingsModalBackdrop = document.getElementById('settings-modal-backdrop');
+    const settingsCancelBtn = document.getElementById('settings-cancel-btn');
+    const settingsSaveBtn = document.getElementById('settings-save-btn');
+    const settingsBotIdDisplay = document.getElementById('settings-bot-id');
+
+    let currentSettingsBotId = null;
+
+    // --- Lógica de Modales ---
+    createBotBtn.addEventListener('click', () => createModalBackdrop.style.display = 'flex');
+    createCancelBtn.addEventListener('click', () => createModalBackdrop.style.display = 'none');
+    createModalBackdrop.addEventListener('click', (e) => { if (e.target === createModalBackdrop) createModalBackdrop.style.display = 'none'; });
+
+    editCancelBtn.addEventListener('click', () => editModalBackdrop.style.display = 'none');
+    editModalBackdrop.addEventListener('click', (e) => { if (e.target === editModalBackdrop) editModalBackdrop.style.display = 'none'; });
+
+    settingsCancelBtn.addEventListener('click', () => settingsModalBackdrop.style.display = 'none');
+    settingsModalBackdrop.addEventListener('click', (e) => { if (e.target === settingsModalBackdrop) settingsModalBackdrop.style.display = 'none'; });
+
+    settingsSaveBtn.addEventListener('click', saveBotFeatures);
+
+    function showEditModal(botId, currentPrompt) {
+        editBotIdDisplay.textContent = botId;
+        editBotPromptTextarea.value = currentPrompt;
+        editBotForm.dataset.botId = botId;
+        editModalBackdrop.style.display = 'flex';
+    }
+
+    async function showSettingsModal(botId) {
+        currentSettingsBotId = botId;
+        settingsBotIdDisplay.textContent = botId;
+        
+        try {
+            const response = await fetch(`/api/bot/${botId}/features`);
+            const features = await response.json();
+            
+            // Cargar valores en los toggles
+            document.getElementById('feature-scheduling').checked = features.schedulingEnabled === 1;
+            document.getElementById('feature-autoresponse').checked = features.autoResponseEnabled === 1;
+            document.getElementById('feature-leadcapture').checked = features.leadCaptureEnabled === 1;
+            document.getElementById('feature-workinghours').checked = features.workingHoursEnabled === 1;
+            
+            settingsModalBackdrop.style.display = 'flex';
+        } catch (error) {
+            alert('Error cargando configuración');
+        }
+    }
+
+    async function saveBotFeatures() {
+        const features = {
+            schedulingEnabled: document.getElementById('feature-scheduling').checked ? 1 : 0,
+            autoResponseEnabled: document.getElementById('feature-autoresponse').checked ? 1 : 0,
+            leadCaptureEnabled: document.getElementById('feature-leadcapture').checked ? 1 : 0,
+            workingHoursEnabled: document.getElementById('feature-workinghours').checked ? 1 : 0
+        };
+        
+        try {
+            const response = await fetch(`/api/bot/${currentSettingsBotId}/features`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(features)
+            });
+            
+            const result = await response.json();
+            if (response.ok) {
+                alert('✅ Configuración guardada exitosamente');
+                settingsModalBackdrop.style.display = 'none';
+            } else {
+                alert(`Error: ${result.message}`);
+            }
+        } catch (error) {
+            alert('No se pudo guardar la configuración');
+        }
+    }
+
+    // --- Lógica de Formularios ---
+    createBotForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const data = Object.fromEntries(new FormData(createBotForm).entries());
+        try {
+            const response = await fetch('/create-bot', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) });
+            const result = await response.json();
+            if (response.ok) { createModalBackdrop.style.display = 'none'; createBotForm.reset(); } 
+            else { alert(`Error: ${result.message}`); }
+        } catch (error) { alert('No se pudo crear el bot.'); }
+    });
+
+    editBotForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const botId = e.currentTarget.dataset.botId;
+        const newPrompt = editBotPromptTextarea.value;
+        try {
+            const response = await fetch(`/edit-bot/${botId}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ prompt: newPrompt }) });
+            const result = await response.json();
+            if (response.ok) {
+                const card = botsContainer.querySelector(`.bot-card[data-bot-id="${botId}"]`);
+                if(card) card.dataset.prompt = newPrompt;
+                editModalBackdrop.style.display = 'none';
+            } else { alert(`Error: ${result.message}`); }
+        } catch (error) { alert('No se pudieron guardar los cambios.'); }
+    });
+
+    // --- Lógica de Acciones en Tarjetas (Delegación de Eventos) ---
+    botsContainer.addEventListener('click', async (e) => {
+        const button = e.target.closest('button');
+        if (!button) return;
+        const card = button.closest('.bot-card');
+        if (!card) return;
+        const botId = card.dataset.botId;
+
+        if (button.classList.contains('btn-settings')) {
+            showSettingsModal(botId);
+        } else if (button.classList.contains('btn-toggle')) {
+            const action = button.dataset.action;
+            const endpoint = action === 'disable' ? `/disable-bot/${botId}` : `/enable-bot/${botId}`;
+            button.disabled = true;
+            try { await fetch(endpoint, { method: 'POST' }); } catch (error) { console.error(`Error al ${action} bot:`, error); }
+        } else if (button.classList.contains('btn-close')) {
+            const botName = card.querySelector('.bot-name').textContent;
+            if (confirm(`¿Seguro que quieres eliminar el bot "${botName}"?\nEsta acción es irreversible.`)) {
+                try { await fetch(`/delete-bot/${botId}`, { method: 'DELETE' }); } catch (error) { alert('No se pudo eliminar el bot.'); }
+            }
+        } else if (button.classList.contains('btn-edit')) {
+            const currentPrompt = card.dataset.prompt || '';
+            showEditModal(botId, currentPrompt);
+        }
+    });
+
+    // --- Lógica de WebSocket y renderizado ---
+    const socket = new WebSocket(`ws://${window.location.host}`);
+    socket.onmessage = (event) => {
+        const message = JSON.parse(event.data);
+        const handler = {
+            'INIT': (data) => data.forEach(addOrUpdateBotCard),
+            'NEW_BOT': addOrUpdateBotCard,
+            'UPDATE_BOT': addOrUpdateBotCard,
+            'BOT_DELETED': (data) => {
+                const cardToRemove = botsContainer.querySelector(`.bot-card[data-bot-id="${data.id}"]`);
+                if (cardToRemove) cardToRemove.remove();
+            }
+        }[message.type];
+        if (handler) handler(message.data);
+    };
+
+    function addOrUpdateBotCard(botData) {
+        if (botData.ownerEmail !== currentUserEmail) {
+            return;
+        }
+
+        let card = botsContainer.querySelector(`.bot-card[data-bot-id="${botData.id}"]`);
+        if (!card) {
+            card = botCardTemplate.content.cloneNode(true).firstElementChild;
+            botsContainer.appendChild(card);
+        }
+        card.dataset.botId = botData.id;
+        card.dataset.prompt = botData.prompt;
+        card.querySelector('.bot-name').textContent = botData.name;
+        card.querySelector('.bot-id').textContent = botData.id;
+        card.querySelector('.bot-port').textContent = botData.port;
+        
+        const statusText = card.querySelector('.status-text');
+        const qrImage = card.querySelector('.qr-code');
+        const connectedIcon = card.querySelector('.connected-icon');
+        const toggleBtn = card.querySelector('.btn-toggle');
+        
+        card.className = 'bot-card';
+        qrImage.style.display = 'none';
+        connectedIcon.style.display = 'none';
+        toggleBtn.disabled = false;
+
+        if (botData.status === 'enabled') {
+            toggleBtn.textContent = 'Deshabilitar';
+            toggleBtn.className = 'btn btn-small btn-toggle btn-danger';
+            toggleBtn.dataset.action = 'disable';
+        } else {
+            toggleBtn.textContent = 'Habilitar';
+            toggleBtn.className = 'btn btn-small btn-toggle btn-success';
+            toggleBtn.dataset.action = 'enable';
+        }
+
+        switch (botData.runtimeStatus) {
+            case 'CONNECTED': card.classList.add('status-connected'); statusText.textContent = 'Conectado'; connectedIcon.style.display = 'block'; break;
+            case 'PENDING_QR': card.classList.add('status-pending'); statusText.textContent = 'Esperando QR'; qrImage.src = botData.qr; qrImage.style.display = 'block'; break;
+            case 'DISCONNECTED': card.classList.add('status-disconnected'); statusText.textContent = 'Desconectado'; break;
+            case 'DISABLED': card.classList.add('status-disabled'); statusText.textContent = 'Deshabilitado'; break;
+            default: card.classList.add('status-starting'); statusText.textContent = 'Iniciando...'; break;
+        }
+    }
+  </script>
+</body>
+</html>
