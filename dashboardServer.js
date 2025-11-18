@@ -22,7 +22,7 @@ const app = express();
 const server = http.createServer(app);
 const wss = new WebSocket.Server({ server });
 
-const PORT = process.env.DASHBOARD_PORT || 3000;
+const PORT = process.env.PORT || process.env.DASHBOARD_PORT || 3000;
 
 // Mapa de procesos de bots activos: { botId: childProcess }
 const activeBots = new Map();
@@ -560,8 +560,8 @@ app.delete('/api/schedule/:scheduleId', requireAdmin, (req, res) => {
 });
 
 // === INICIAR SERVIDOR ===
-server.listen(PORT, () => {
-    console.log(`🚀 Dashboard corriendo en http://localhost:${PORT}`);
+server.listen(PORT, '0.0.0.0', () => {
+    console.log(`🚀 Dashboard corriendo en puerto ${PORT}`);
     
     const enabledBots = botDbService.getAllBots().filter(bot => bot.status === 'enabled');
     enabledBots.forEach(bot => launchBot(bot));

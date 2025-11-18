@@ -30,3 +30,13 @@ Thumbs.db
 .idea/
 *.swp
 *.swo
+
+node_modules/
+.env
+.env.*
+data/*.db-shm
+data/*.db-wal
+*.log
+.wwebjs_auth/
+.wwebjs_cache/
+.DS_Store
