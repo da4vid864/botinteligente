@@ -66,15 +66,14 @@ async function generateFollowUpQuestion(lead) {
     if (!lead.name) missingFields.push('nombre completo');
     if (!lead.email) missingFields.push('correo electrónico');
     if (!lead.location) missingFields.push('ubicación o ciudad');
-    if (!lead.phone) missingFields.push('número de teléfono');
+    // Ya no preguntamos por teléfono, usaremos el WhatsApp
 
     if (missingFields.length === 0) return null;
 
     const questions = {
         'nombre completo': '¿Podrías compartirme tu nombre completo? 😊',
         'correo electrónico': '¿Cuál es tu correo electrónico para enviarte más información?',
-        'ubicación o ciudad': '¿Desde dónde nos contactas? (ciudad o ubicación)',
-        'número de teléfono': '¿Tienes un número de contacto adicional donde podamos comunicarnos?'
+        'ubicación o ciudad': '¿Desde dónde nos contactas? (ciudad o ubicación)'
     };
 
     // Retornar la pregunta del primer campo faltante

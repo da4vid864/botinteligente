@@ -236,15 +236,26 @@
 </head>
 <body>
   <div class="container">
-    <header>
-      <h1>💼 Panel de Ventas</h1>
-      <div class="user-info">
-        <img src="<%= user.picture %>" alt="User" class="user-avatar">
-        <span><%= user.displayName %></span>
-        <a href="/" class="btn btn-secondary">Dashboard</a>
-        <a href="/auth/logout" class="btn btn-secondary">Cerrar Sesión</a>
-      </div>
-    </header>
+ <!-- sales.ejs -->
+<header>
+  <h1>💼 Panel de Ventas</h1>
+  <div class="user-info">
+    <img src="<%= user.picture %>" alt="User" class="user-avatar">
+    <span><%= user.displayName %></span>
+    
+    <!-- Mostrar rol -->
+    <span style="background: <%= user.role === 'admin' ? '#28a745' : '#007bff' %>; padding: 4px 8px; border-radius: 4px; font-size: 12px; margin-left: 8px;">
+      <%= user.role === 'admin' ? '👑 Admin' : '👤 Vendedor' %>
+    </span>
+    
+    <!-- Solo mostrar el botón de Dashboard si es admin -->
+    <% if (user.role === 'admin') { %>
+      <a href="/" class="btn btn-secondary">⚙️ Gestionar Bots</a>
+    <% } %>
+    
+    <a href="/auth/logout" class="btn btn-secondary">Cerrar Sesión</a>
+  </div>
+</header>
 
     <div class="tabs">
       <button class="tab active" data-tab="qualified">Leads Calificados</button>
@@ -271,7 +282,7 @@
   <script>
     const currentUserEmail = '<%= user.email %>';
     const socket = new WebSocket(`ws://${window.location.host}`);
-    
+    let loadedMessagesCount = 50; 
     let currentTab = 'qualified';
     let selectedLeadId = null;
     let leads = {
@@ -408,47 +419,71 @@
 
     // === RENDERIZAR VISTA DE CHAT ===
     function renderChatView(lead, messages) {
-      const container = document.getElementById('chat-container');
-      
-      const canAssign = currentTab === 'qualified';
-      const canReply = currentTab === 'assigned';
-      
-      container.innerHTML = `
+    const container = document.getElementById('chat-container');
+    
+    const canAssign = currentTab === 'qualified';
+    const canReply = currentTab === 'assigned';
+    const totalMessages = messages.length;
+    
+    // Si hay muchos mensajes, mostrar solo los últimos 50 inicialmente
+    const messagesToShow = totalMessages > 50 ? messages.slice(-50) : messages;
+    const hasMoreMessages = totalMessages > messagesToShow.length;
+    
+    container.innerHTML = `
         <div class="chat-header">
-          <div class="chat-info">
+            <div class="chat-info">
             <h3>${lead.name || 'Sin nombre'}</h3>
             <p>📧 ${lead.email || 'No proporcionado'}</p>
             <p>📍 ${lead.location || 'No proporcionado'}</p>
             <p>📞 ${lead.phone || lead.whatsappNumber}</p>
-          </div>
-          ${canAssign ? `<button class="btn btn-assign" onclick="assignLeadToMe(${lead.id})">Tomar Lead</button>` : ''}
+            ${lead.phone === lead.whatsappNumber ? 
+                '<p style="font-size: 0.8rem; color: #888;">💬 Teléfono de contacto: WhatsApp</p>' : 
+                '<p style="font-size: 0.8rem; color: #888;">💬 WhatsApp: ' + lead.whatsappNumber + '</p>'
+            }
+        </div>
+            ${canAssign ? `<button class="btn btn-assign" onclick="assignLeadToMe(${lead.id})">Tomar Lead</button>` : ''}
         </div>
         <div class="chat-messages" id="chat-messages">
-          ${messages.map(msg => createMessageHTML(msg.sender, msg.message, msg.timestamp)).join('')}
+            ${hasMoreMessages ? `
+                <div id="load-more-container" style="text-align: center; padding: 1rem;">
+                    <button class="btn btn-secondary" onclick="loadMoreMessages(${lead.id}, ${totalMessages})">
+                        ⬆️ Cargar mensajes anteriores (${totalMessages - messagesToShow.length} restantes)
+                    </button>
+                </div>
+            ` : ''}
+            <div id="messages-container">
+                ${messagesToShow.map(msg => createMessageHTML(msg.sender, msg.message, msg.timestamp)).join('')}
+            </div>
         </div>
         ${canReply ? `
-          <div class="chat-input">
-            <textarea id="message-input" placeholder="Escribe un mensaje..." rows="2"></textarea>
-            <button class="btn" onclick="sendMessage()">Enviar</button>
-          </div>
+            <div class="chat-input">
+                <textarea id="message-input" placeholder="Escribe un mensaje..." rows="2"></textarea>
+                <button class="btn" onclick="sendMessage()">Enviar</button>
+            </div>
         ` : ''}
-      `;
-      
-      // Scroll al final
-      const messagesContainer = document.getElementById('chat-messages');
-      messagesContainer.scrollTop = messagesContainer.scrollHeight;
-      
-      // Enter para enviar
-      if (canReply) {
-        document.getElementById('message-input').addEventListener('keydown', (e) => {
-          if (e.key === 'Enter' && !e.shiftKey) {
-            e.preventDefault();
-            sendMessage();
-          }
-        });
-      }
+    `;
+    
+    // Guardar referencia a todos los mensajes
+    container.dataset.allMessages = JSON.stringify(messages);
+    container.dataset.currentCount = messagesToShow.length;
+    
+    // Scroll al final
+    const messagesContainer = document.getElementById('chat-messages');
+    messagesContainer.scrollTop = messagesContainer.scrollHeight;
+    
+    // Enter para enviar si puede responder
+    if (canReply) {
+        const messageInput = document.getElementById('message-input');
+        if (messageInput) {
+            messageInput.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    sendMessage();
+                }
+            });
+        }
     }
-
+}
     // === CREAR HTML DE MENSAJE ===
     function createMessageHTML(sender, message, timestamp) {
       const date = new Date(timestamp);
@@ -526,6 +561,156 @@
     if (Notification.permission === 'default') {
       Notification.requestPermission();
     }
+
+    function loadMoreMessages(leadId, totalMessages) {
+    const container = document.getElementById('chat-container');
+    const allMessages = JSON.parse(container.dataset.allMessages);
+    const currentCount = parseInt(container.dataset.currentCount);
+    
+    // Cargar 50 mensajes más cada vez
+    const newCount = Math.min(currentCount + 50, totalMessages);
+    const messagesToShow = allMessages.slice(-(newCount));
+    
+    // Actualizar solo la sección de mensajes
+    const messagesSection = document.getElementById('chat-messages');
+    const previousScrollHeight = messagesSection.scrollHeight;
+    const previousScrollTop = messagesSection.scrollTop;
+    
+    // Renderizar mensajes actualizados
+    let messagesHTML = '';
+    
+    // Si aún quedan mensajes por cargar, mantener el botón
+    if (newCount < totalMessages) {
+        messagesHTML += `
+            <div id="load-more-container" style="text-align: center; padding: 1rem;">
+                <button class="btn btn-secondary" onclick="loadMoreMessages(${leadId}, ${totalMessages})">
+                    ⬆️ Cargar mensajes anteriores (${totalMessages - newCount} restantes)
+                </button>
+            </div>
+        `;
+    }
+    
+    messagesHTML += '<div id="messages-container">';
+    messagesHTML += messagesToShow.map(msg => createMessageHTML(msg.sender, msg.message, msg.timestamp)).join('');
+    messagesHTML += '</div>';
+    
+    messagesSection.innerHTML = messagesHTML;
+    
+    // Mantener la posición de scroll relativa
+    const newScrollHeight = messagesSection.scrollHeight;
+    const scrollDiff = newScrollHeight - previousScrollHeight;
+    messagesSection.scrollTop = previousScrollTop + scrollDiff;
+    
+    // Actualizar contador
+    container.dataset.currentCount = newCount;
+    
+    // Actualizar texto informativo
+    const chatInfo = document.querySelector('.chat-info p[style*="color: #888"]');
+    if (chatInfo) {
+        chatInfo.textContent = `💬 Mostrando ${newCount} de ${totalMessages} mensajes`;
+    }
+}
+async function loadAllMessages(leadId) {
+    const btn = event.target;
+    btn.disabled = true;
+    btn.textContent = 'Cargando...';
+    
+    try {
+        // Hacer petición para obtener TODOS los mensajes
+        const response = await fetch(`/api/leads/${leadId}/messages?limit=9999`);
+        const data = await response.json();
+        
+        if (data.messages && data.lead) {
+            // Renderizar con todos los mensajes
+            renderFullChatView(data.lead, data.messages);
+        }
+    } catch (error) {
+        console.error('Error cargando mensajes:', error);
+        btn.disabled = false;
+        btn.textContent = 'Error - Reintentar';
+    }
+}
+function renderFullChatView(lead, messages) {
+    const container = document.getElementById('chat-container');
+    const canAssign = currentTab === 'qualified';
+    const canReply = currentTab === 'assigned';
+    
+    container.innerHTML = `
+        <div class="chat-header">
+            <div class="chat-info">
+                <h3>${lead.name || 'Sin nombre'}</h3>
+                <p>📧 ${lead.email || 'No proporcionado'}</p>
+                <p>📍 ${lead.location || 'No proporcionado'}</p>
+                <p>📞 ${lead.phone || lead.whatsappNumber}</p>
+                <p style="color: #88ff88; font-size: 0.8rem;">
+                    ✅ Todos los mensajes cargados (${messages.length} total)
+                </p>
+            </div>
+            ${canAssign ? `<button class="btn btn-assign" onclick="assignLeadToMe(${lead.id})">Tomar Lead</button>` : ''}
+        </div>
+        <div class="chat-messages" id="chat-messages">
+            <div id="messages-container">
+                ${messages.map(msg => createMessageHTML(msg.sender, msg.message, msg.timestamp)).join('')}
+            </div>
+        </div>
+        ${canReply ? `
+            <div class="chat-input">
+                <textarea id="message-input" placeholder="Escribe un mensaje..." rows="2"></textarea>
+                <button class="btn" onclick="sendMessage()">Enviar</button>
+            </div>
+        ` : ''}
+    `;
+    
+    // Scroll al final después de cargar todo
+    setTimeout(() => {
+        const messagesContainer = document.getElementById('chat-messages');
+        messagesContainer.scrollTop = messagesContainer.scrollHeight;
+    }, 100);
+    
+    // Re-añadir listener para Enter si puede responder
+    if (canReply) {
+        const messageInput = document.getElementById('message-input');
+        if (messageInput) {
+            messageInput.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    sendMessage();
+                }
+            });
+        }
+    }
+}
+const additionalStyles = `
+<style>
+    .btn-secondary {
+        background-color: #555;
+        color: white;
+        border: 1px solid #666;
+    }
+    
+    .btn-secondary:hover {
+        background-color: #666;
+    }
+    
+    #load-more-container {
+        position: sticky;
+        top: 0;
+        background: linear-gradient(to bottom, rgba(26,26,26,1) 0%, rgba(26,26,26,0.9) 80%, transparent 100%);
+        z-index: 10;
+        padding: 1rem !important;
+    }
+    
+    .chat-messages {
+        position: relative;
+    }
+    
+    #messages-container {
+        padding-top: 0.5rem;
+    }
+</style>
+`;
+
+document.head.insertAdjacentHTML('beforeend', additionalStyles);
   </script>
 </body>
 </html>

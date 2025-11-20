@@ -48,12 +48,25 @@ db.exec(createMessagesTable);
  * Obtiene o crea un lead por botId y número de WhatsApp
  */
 function getOrCreateLead(botId, whatsappNumber) {
+    console.log(`🔍 DEBUG: getOrCreateLead called with botId: ${botId}, whatsappNumber: ${whatsappNumber}`);
     let lead = db.prepare('SELECT * FROM leads WHERE botId = ? AND whatsappNumber = ?').get(botId, whatsappNumber);
     
     if (!lead) {
+        console.log(`🔍 DEBUG: No existing lead, creating new one for ${whatsappNumber}`);
         const stmt = db.prepare('INSERT INTO leads (botId, whatsappNumber, status) VALUES (?, ?, ?)');
         const result = stmt.run(botId, whatsappNumber, 'capturing');
+        console.log(`🔍 DEBUG: Insert result:`, {
+            lastInsertRowID: result.lastInsertRowID,
+            changes: result.changes
+        });
         lead = db.prepare('SELECT * FROM leads WHERE id = ?').get(result.lastInsertRowID);
+        console.log(`🔍 DEBUG: New lead created:`, lead);
+    } else {
+        console.log(`🔍 DEBUG: Existing lead found:`, lead);
+    }
+    
+    if (!lead) {
+        console.error(`❌ DEBUG: getOrCreateLead failed to create/find lead for ${whatsappNumber}`);
     }
     
     return lead;
@@ -85,8 +98,30 @@ function updateLeadInfo(leadId, data) {
  * Marca un lead como calificado (información completa)
  */
 function qualifyLead(leadId) {
-    const stmt = db.prepare('UPDATE leads SET status = ?, qualifiedAt = CURRENT_TIMESTAMP WHERE id = ?');
-    stmt.run('qualified', leadId);
+    // Obtener el lead actual
+    const lead = db.prepare('SELECT * FROM leads WHERE id = ?').get(leadId);
+    
+    if (!lead) {
+        throw new Error(`Lead ${leadId} no encontrado`);
+    }
+    
+    // Si no tiene phone, usar el whatsappNumber
+    let phoneToUse = lead.phone;
+    if (!phoneToUse || phoneToUse.trim() === '') {
+        phoneToUse = lead.whatsappNumber;
+        console.log(`📞 Lead ${leadId}: Usando WhatsApp ${phoneToUse} como teléfono de contacto`);
+    }
+    
+    // Actualizar el lead con el teléfono y marcar como calificado
+    const stmt = db.prepare(`
+        UPDATE leads 
+        SET status = ?, 
+            phone = ?,
+            qualifiedAt = CURRENT_TIMESTAMP 
+        WHERE id = ?
+    `);
+    stmt.run('qualified', phoneToUse, leadId);
+    
     return db.prepare('SELECT * FROM leads WHERE id = ?').get(leadId);
 }
 
@@ -134,25 +169,68 @@ function getLeadsByVendor(vendorEmail) {
  * Añade un mensaje a la conversación de un lead
  */
 function addLeadMessage(leadId, sender, message) {
-    const stmt = db.prepare('INSERT INTO lead_messages (leadId, sender, message) VALUES (?, ?, ?)');
-    stmt.run(leadId, sender, message);
+    console.log(`🔍 DEBUG: addLeadMessage called with leadId: ${leadId}, sender: ${sender}, message: "${message.substring(0, 50)}..."`);
     
-    // Actualizar lastMessageAt del lead
-    db.prepare('UPDATE leads SET lastMessageAt = CURRENT_TIMESTAMP WHERE id = ?').run(leadId);
+    if (!leadId) {
+        console.error(`❌ DEBUG: addLeadMessage received invalid leadId: ${leadId}`);
+        throw new Error(`Invalid leadId: ${leadId}`);
+    }
+    
+    try {
+        const stmt = db.prepare('INSERT INTO lead_messages (leadId, sender, message) VALUES (?, ?, ?)');
+        const result = stmt.run(leadId, sender, message);
+        console.log(`🔍 DEBUG: Message inserted successfully, changes: ${result.changes}`);
+        
+        // Actualizar lastMessageAt del lead
+        const updateResult = db.prepare('UPDATE leads SET lastMessageAt = CURRENT_TIMESTAMP WHERE id = ?').run(leadId);
+        console.log(`🔍 DEBUG: Lead updated, changes: ${updateResult.changes}`);
+    } catch (error) {
+        console.error(`❌ DEBUG: Error in addLeadMessage:`, error);
+        throw error;
+    }
 }
 
 /**
  * Obtiene el historial de mensajes de un lead
  */
-function getLeadMessages(leadId, limit = 50) {
-    return db.prepare('SELECT * FROM lead_messages WHERE leadId = ? ORDER BY timestamp ASC LIMIT ?').all(leadId, limit);
+function getLeadMessages(leadId, limit = 1000) {
+    return db.prepare(
+        'SELECT * FROM lead_messages WHERE leadId = ? ORDER BY timestamp ASC LIMIT ?'
+    ).all(leadId, limit);
 }
-
+function getMessageCount(leadId) {
+    const result = db.prepare(
+        'SELECT COUNT(*) as count FROM lead_messages WHERE leadId = ?'
+    ).get(leadId);
+    return result.count;
+}
+function getLeadMessagesPaginated(leadId, offset = 0, limit = 50) {
+    return db.prepare(
+        'SELECT * FROM lead_messages WHERE leadId = ? ORDER BY timestamp ASC LIMIT ? OFFSET ?'
+    ).all(leadId, limit, offset);
+}
 /**
  * Verifica si un lead tiene toda la información requerida
  */
 function isLeadComplete(lead) {
-    return !!(lead.name && lead.email && lead.location && lead.phone);
+    console.log(`🔍 DEBUG: isLeadComplete called with lead:`, {
+        leadId: lead?.id,
+        hasName: !!lead?.name,
+        hasEmail: !!lead?.email,
+        hasLocation: !!lead?.location,
+        phone: lead?.phone || 'usará WhatsApp'
+    });
+    
+    if (!lead) {
+        console.error(`❌ DEBUG: isLeadComplete received undefined lead`);
+        return false;
+    }
+    
+    // Solo requerir nombre, email y ubicación
+    // El teléfono se auto-asignará del whatsappNumber si falta
+    const isComplete = !!(lead.name && lead.email && lead.location);
+    console.log(`🔍 DEBUG: isLeadComplete result: ${isComplete}`);
+    return isComplete;
 }
 
 module.exports = {
@@ -166,5 +244,7 @@ module.exports = {
     getLeadsByVendor,
     addLeadMessage,
     getLeadMessages,
-    isLeadComplete
+    isLeadComplete,
+    getMessageCount,
+    getLeadMessagesPaginated
 };

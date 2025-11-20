@@ -8,4 +8,4 @@ cmds = ["npm ci --production"]
 cmds = []
 
 [start]
-cmd = "npm start"
+cmd = "npm start"   

@@ -7,6 +7,8 @@ const path = require('path');
 const { fork } = require('child_process');
 const cookieParser = require('cookie-parser');
 const passport = require('passport');
+const cookie = require('cookie');
+const jwt = require('jsonwebtoken');
 
 const botDbService = require('./services/botDbService');
 const leadDbService = require('./services/leadDbService');
@@ -14,7 +16,7 @@ const botConfigService = require('./services/botConfigService');
 const schedulerService = require('./services/schedulerService');
 const { startSchedulerExecutor } = require('./services/schedulerExecutor');
 const authRoutes = require('./routes/authRoutes');
-const { attachUser, requireAdmin } = require('./auth/authMiddleware');
+const { attachUser, requireAdmin, requireAuth } = require('./auth/authMiddleware');
 
 require('./auth/passport');
 
@@ -47,17 +49,24 @@ app.use('/auth', authRoutes);
 
 // === RUTA DE LOGIN ===
 app.get('/login', (req, res) => {
-    if (req.user) return res.redirect('/');
+    if (req.user) {
+        // Redirigir según el rol
+        if (req.user.role === 'admin') {
+            return res.redirect('/');
+        } else if (req.user.role === 'vendor') {
+            return res.redirect('/sales');
+        }
+    }
     res.render('login');
 });
 
-// === RUTA PRINCIPAL (DASHBOARD) - PROTEGIDA ===
+// === RUTA PRINCIPAL (DASHBOARD) - SOLO ADMINS ===
 app.get('/', requireAdmin, (req, res) => {
     res.render('dashboard', { user: req.user });
 });
 
-// === RUTA DE VENTAS (NUEVO) ===
-app.get('/sales', requireAdmin, (req, res) => {
+// === RUTA DE VENTAS - ADMINS Y VENDEDORES ===
+app.get('/sales', requireAuth, (req, res) => {
     res.render('sales', { user: req.user });
 });
 
@@ -91,19 +100,48 @@ startSchedulerExecutor((botId, action) => {
     });
 });
 
-// === WEBSOCKET: CONEXIÓN ===
-wss.on('connection', (ws) => {
-    console.log('✅ Cliente WebSocket conectado al dashboard');
+// === WEBSOCKET: CONEXIÓN CON AUTENTICACIÓN ===
+wss.on('connection', (ws, req) => {
+    // Extraer y validar el token de la cookie
+    const cookies = cookie.parse(req.headers.cookie || '');
+    const token = cookies.auth_token;
+    
+    let user = null;
+    if (token) {
+        try {
+            user = jwt.verify(token, process.env.JWT_SECRET);
+        } catch (err) {
+            console.warn('Token WebSocket inválido');
+            ws.close(1008, 'Token inválido');
+            return;
+        }
+    } else {
+        console.warn('Conexión WebSocket sin token');
+        ws.close(1008, 'No autenticado');
+        return;
+    }
+    
+    // Verificar rol (admin o vendor)
+    if (user.role !== 'admin' && user.role !== 'vendor') {
+        console.warn(`Usuario no autorizado intentó conectar: ${user.email}`);
+        ws.close(1008, 'No autorizado');
+        return;
+    }
+    
+    console.log(`✅ WebSocket conectado: ${user.email} (${user.role})`);
     dashboardClients.add(ws);
 
-    const allBots = botDbService.getAllBots();
-    const botsData = allBots.map(bot => ({
-        ...bot,
-        runtimeStatus: getRuntimeStatus(bot)
-    }));
-    
-    ws.send(JSON.stringify({ type: 'INIT', data: botsData }));
+    // Si es admin, enviar información de bots
+    if (user.role === 'admin') {
+        const allBots = botDbService.getAllBots();
+        const botsData = allBots.map(bot => ({
+            ...bot,
+            runtimeStatus: getRuntimeStatus(bot)
+        }));
+        ws.send(JSON.stringify({ type: 'INIT', data: botsData }));
+    }
 
+    // Enviar leads calificados (ambos roles pueden verlos)
     const qualifiedLeads = leadDbService.getQualifiedLeads();
     ws.send(JSON.stringify({ type: 'INIT_LEADS', data: qualifiedLeads }));
 
@@ -112,11 +150,11 @@ wss.on('connection', (ws) => {
             const data = JSON.parse(message);
             
             if (data.type === 'ASSIGN_LEAD') {
-                handleAssignLead(data.leadId, data.vendorEmail);
+                handleAssignLead(data.leadId, user.email);
             }
             
             if (data.type === 'SEND_MESSAGE') {
-                handleSendMessage(data.leadId, data.message, data.vendorEmail);
+                handleSendMessage(data.leadId, data.message, user.email);
             }
 
             if (data.type === 'GET_LEAD_MESSAGES') {
@@ -129,7 +167,7 @@ wss.on('connection', (ws) => {
     });
 
     ws.on('close', () => {
-        console.log('❌ Cliente WebSocket desconectado');
+        console.log(`❌ WebSocket desconectado: ${user.email}`);
         dashboardClients.delete(ws);
     });
 });
@@ -292,23 +330,24 @@ function handleSendMessage(leadId, message, vendorEmail) {
 // === OBTENER HISTORIAL DE MENSAJES DE UN LEAD ===
 function handleGetLeadMessages(ws, leadId) {
     try {
-        const messages = leadDbService.getLeadMessages(leadId);
+        const messages = leadDbService.getLeadMessages(leadId, 1000);
         const lead = leadDbService.getLeadById(leadId);
         
-        ws.send(JSON.stringify({
+        broadcastToDashboard({
             type: 'LEAD_MESSAGES',
             data: {
                 leadId: leadId,
                 lead: lead,
-                messages: messages
+                messages: messages,
+                totalMessages: messages.length
             }
-        }));
+        });
     } catch (error) {
         console.error('Error obteniendo mensajes del lead:', error);
     }
 }
 
-// === API: CREAR BOT ===
+// === API: CREAR BOT (SOLO ADMIN) ===
 app.post('/create-bot', requireAdmin, (req, res) => {
     const { name, id, prompt } = req.body;
     const ownerEmail = req.user.email;
@@ -328,13 +367,8 @@ app.post('/create-bot', requireAdmin, (req, res) => {
     const botConfig = { id, name, port: newPort, prompt, status: 'enabled', ownerEmail };
     
     try {
-        // Crear el bot en la base de datos
         botDbService.addBot(botConfig);
-        
-        // Crear las features del bot
         botConfigService.createBotFeatures(id);
-        
-        // Lanzar el bot
         launchBot(botConfig);
 
         broadcastToDashboard({
@@ -349,7 +383,7 @@ app.post('/create-bot', requireAdmin, (req, res) => {
     }
 });
 
-// === API: EDITAR PROMPT DE BOT ===
+// === API: EDITAR PROMPT DE BOT (SOLO ADMIN) ===
 app.patch('/edit-bot/:id', requireAdmin, (req, res) => {
     const { id } = req.params;
     const { prompt } = req.body;
@@ -379,7 +413,7 @@ app.patch('/edit-bot/:id', requireAdmin, (req, res) => {
     res.json({ message: 'Prompt actualizado exitosamente' });
 });
 
-// === API: DESHABILITAR BOT ===
+// === API: DESHABILITAR BOT (SOLO ADMIN) ===
 app.post('/disable-bot/:id', requireAdmin, (req, res) => {
     const { id } = req.params;
     const ownerEmail = req.user.email;
@@ -400,7 +434,7 @@ app.post('/disable-bot/:id', requireAdmin, (req, res) => {
     res.json({ message: 'Bot deshabilitado' });
 });
 
-// === API: HABILITAR BOT ===
+// === API: HABILITAR BOT (SOLO ADMIN) ===
 app.post('/enable-bot/:id', requireAdmin, (req, res) => {
     const { id } = req.params;
     const ownerEmail = req.user.email;
@@ -421,7 +455,7 @@ app.post('/enable-bot/:id', requireAdmin, (req, res) => {
     res.json({ message: 'Bot habilitado' });
 });
 
-// === API: ELIMINAR BOT ===
+// === API: ELIMINAR BOT (SOLO ADMIN) ===
 app.delete('/delete-bot/:id', requireAdmin, (req, res) => {
     const { id } = req.params;
     const ownerEmail = req.user.email;
@@ -444,28 +478,34 @@ app.delete('/delete-bot/:id', requireAdmin, (req, res) => {
     res.json({ message: 'Bot eliminado exitosamente' });
 });
 
-// === API: OBTENER LEADS CALIFICADOS ===
-app.get('/api/leads/qualified', requireAdmin, (req, res) => {
+// === API: OBTENER LEADS CALIFICADOS (ADMIN Y VENDEDOR) ===
+app.get('/api/leads/qualified', requireAuth, (req, res) => {
     const leads = leadDbService.getQualifiedLeads();
     res.json(leads);
 });
 
-// === API: OBTENER LEADS ASIGNADOS AL USUARIO ===
-app.get('/api/leads/assigned', requireAdmin, (req, res) => {
+// === API: OBTENER LEADS ASIGNADOS AL USUARIO (ADMIN Y VENDEDOR) ===
+app.get('/api/leads/assigned', requireAuth, (req, res) => {
     const leads = leadDbService.getLeadsByVendor(req.user.email);
     res.json(leads);
 });
 
-// === API: OBTENER HISTORIAL DE MENSAJES DE UN LEAD ===
-app.get('/api/leads/:id/messages', requireAdmin, (req, res) => {
+// === API: OBTENER HISTORIAL DE MENSAJES DE UN LEAD (ADMIN Y VENDEDOR) ===
+app.get('/api/leads/:id/messages', requireAuth, (req, res) => {
     const { id } = req.params;
-    const messages = leadDbService.getLeadMessages(id);
+    const { limit = 1000 } = req.query;
+    
+    const messages = leadDbService.getLeadMessages(id, parseInt(limit));
     const lead = leadDbService.getLeadById(id);
     
-    res.json({ lead, messages });
+    res.json({ 
+        lead, 
+        messages,
+        totalMessages: messages.length 
+    });
 });
 
-// === API: OBTENER CONFIGURACIÓN DE FUNCIONALIDADES DE UN BOT ===
+// === API: OBTENER CONFIGURACIÓN DE FUNCIONALIDADES DE UN BOT (SOLO ADMIN) ===
 app.get('/api/bot/:botId/features', requireAdmin, (req, res) => {
     const { botId } = req.params;
     const ownerEmail = req.user.email;
@@ -479,7 +519,7 @@ app.get('/api/bot/:botId/features', requireAdmin, (req, res) => {
     res.json(features);
 });
 
-// === API: ACTUALIZAR FUNCIONALIDADES DE UN BOT ===
+// === API: ACTUALIZAR FUNCIONALIDADES DE UN BOT (SOLO ADMIN) ===
 app.patch('/api/bot/:botId/features', requireAdmin, (req, res) => {
     const { botId } = req.params;
     const ownerEmail = req.user.email;
@@ -503,7 +543,7 @@ app.patch('/api/bot/:botId/features', requireAdmin, (req, res) => {
     }
 });
 
-// === API: CREAR TAREA PROGRAMADA ===
+// === API: CREAR TAREA PROGRAMADA (SOLO ADMIN) ===
 app.post('/api/schedule', requireAdmin, (req, res) => {
     const { botId, action, scheduledAt } = req.body;
     const ownerEmail = req.user.email;
@@ -531,7 +571,7 @@ app.post('/api/schedule', requireAdmin, (req, res) => {
     res.json({ message: 'Tarea programada creada exitosamente', schedule });
 });
 
-// === API: OBTENER TAREAS PROGRAMADAS DE UN BOT ===
+// === API: OBTENER TAREAS PROGRAMADAS DE UN BOT (SOLO ADMIN) ===
 app.get('/api/schedules/:botId', requireAdmin, (req, res) => {
     const { botId } = req.params;
     const ownerEmail = req.user.email;
@@ -545,14 +585,14 @@ app.get('/api/schedules/:botId', requireAdmin, (req, res) => {
     res.json(schedules);
 });
 
-// === API: CANCELAR TAREA PROGRAMADA ===
+// === API: CANCELAR TAREA PROGRAMADA (SOLO ADMIN) ===
 app.delete('/api/schedule/:scheduleId', requireAdmin, (req, res) => {
     const { scheduleId } = req.params;
     
     schedulerService.cancelSchedule(scheduleId);
     
     broadcastToDashboard({
-        type: 'SCHEDULE_CANCELLED',
+                type: 'SCHEDULE_CANCELLED',
         data: { scheduleId: parseInt(scheduleId) }
     });
 

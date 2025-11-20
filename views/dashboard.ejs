@@ -8,15 +8,21 @@
 </head>
 <body>
   <div class="container">
-    <header>
-      <h1>🤖 Gestor de Bots de WhatsApp</h1>
-      <div class="user-info">
-        <img src="<%= user.picture %>" alt="User" class="user-avatar">
-        <span><%= user.displayName %></span>
-        <a href="/sales" class="btn" style="background-color: var(--status-connected);">💼 Panel de Ventas</a>
-        <a href="/auth/logout" class="btn btn-secondary">Cerrar Sesión</a>
-      </div>
-    </header>
+<header>
+  <h1>🤖 Gestor de Bots de WhatsApp</h1>
+  <div class="user-info">
+    <img src="<%= user.picture %>" alt="User" class="user-avatar">
+    <span><%= user.displayName %></span>
+    
+    <!-- Mostrar rol -->
+    <span style="background: #28a745; padding: 4px 8px; border-radius: 4px; font-size: 12px; margin-left: 8px;">
+      <%= user.role === 'admin' ? '👑 Admin' : '👤 Vendedor' %>
+    </span>
+    
+    <a href="/sales" class="btn" style="background-color: var(--status-connected);">💼 Panel de Ventas</a>
+    <a href="/auth/logout" class="btn btn-secondary">Cerrar Sesión</a>
+  </div>
+</header>
 
     <main>
         <div id="bots-container"></div>
