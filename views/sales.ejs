@@ -281,7 +281,7 @@
 
   <script>
     const currentUserEmail = '<%= user.email %>';
-    const socket = new WebSocket(`ws://${window.location.host}`);
+    const socket = new WebSocket(`${window.location.protocol === 'https:' ? 'wss:' : 'ws:'}//${window.location.host}`);
     let loadedMessagesCount = 50; 
     let currentTab = 'qualified';
     let selectedLeadId = null;
