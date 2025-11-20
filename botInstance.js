@@ -15,7 +15,6 @@ const {
 } = require('./services/leadDbService');
 
 let botConfig;
-let chatHistoryDB;
 
 function sendStatusToDashboard(type, data = {}) {
     if (process.send) {
@@ -27,10 +26,8 @@ process.on('message', (msg) => {
     if (msg.type === 'INIT') {
         botConfig = msg.config;
         console.log(`[${botConfig.id}] Inicializando con nombre "${botConfig.name}"...`);
-        chatHistoryDB = require('./services/chatHistoryService').init(botConfig.id);
         initializeWhatsApp();
     } else if (msg.type === 'SEND_MESSAGE') {
-        // Permite enviar mensajes desde el dashboard
         handleOutgoingMessage(msg.to, msg.message);
     }
 });
@@ -146,7 +143,6 @@ function initializeWhatsApp() {
             try {
                 console.log(`[${botConfig.id}] 🔍 DEBUG: Iniciando procesamiento de mensaje para ${senderId}`);
                 
-                // Obtener o crear el lead
                 let lead = await getOrCreateLead(botConfig.id, senderId);
                 console.log(`[${botConfig.id}] 🔍 DEBUG: Lead obtenido en mensaje:`, {
                     leadId: lead?.id,
@@ -164,23 +160,18 @@ function initializeWhatsApp() {
                     throw new Error(`Lead sin ID para sender: ${senderId}`);
                 }
                 
-                // IMPORTANTE: Guardar SIEMPRE el mensaje, sin importar el estado
+                // IMPORTANTE: Guardar SIEMPRE el mensaje
                 console.log(`[${botConfig.id}] 🔍 DEBUG: Guardando mensaje para lead ${lead.id}`);
                 await addLeadMessage(lead.id, 'user', userMessage);
-                
-                // Guardar también en el historial del bot para mantener compatibilidad
-                await chatHistoryDB.addMessageToHistory(senderId, 'user', userMessage);
 
                 // Verificar si el lead ya está asignado a ventas
                 if (lead.status === 'assigned') {
                     console.log(`[${botConfig.id}] 🔍 DEBUG: Lead ${lead.id} ya asignado, notificando dashboard`);
-                    // Notificar al dashboard que hay un nuevo mensaje para ventas
                     sendStatusToDashboard('NEW_MESSAGE_FOR_SALES', {
                         leadId: lead.id,
                         from: senderId,
                         message: userMessage
                     });
-                    // El bot no responde automáticamente
                     return;
                 }
 
@@ -194,7 +185,6 @@ function initializeWhatsApp() {
                         console.log(`[${botConfig.id}] Información extraída:`, extractedInfo);
                     }
 
-                    // Verificar si ya tenemos toda la información
                     console.log(`[${botConfig.id}] 🔍 DEBUG: Verificando si lead está completo:`, {
                         name: lead.name,
                         email: lead.email,
@@ -215,12 +205,8 @@ function initializeWhatsApp() {
                         
                         console.log(`[${botConfig.id}] 🔍 DEBUG: About to reply to message`);
                         await msg.reply(botReply);
-                        
-                        // GUARDAR respuesta del bot en lead_messages
                         await addLeadMessage(lead.id, 'bot', botReply);
-                        await chatHistoryDB.addMessageToHistory(senderId, 'assistant', botReply);
                         
-                        // Notificar al dashboard
                         sendStatusToDashboard('NEW_QUALIFIED_LEAD', { lead });
                         return;
                     }
@@ -231,20 +217,26 @@ function initializeWhatsApp() {
                     let botReply;
                     
                     if (followUpQuestion) {
-                        const history = await chatHistoryDB.getChatHistory(senderId);
+                        const messages = await getLeadMessages(lead.id, 20);
+                        const history = messages.map(m => ({
+                            role: m.sender === 'user' ? 'user' : 'assistant',
+                            content: m.message
+                        }));
+                        
                         const contextReply = await getChatReply(userMessage, history, botConfig.prompt);
                         botReply = `${contextReply}\n\n${followUpQuestion}`;
                     } else {
-                        const history = await chatHistoryDB.getChatHistory(senderId);
+                        const messages = await getLeadMessages(lead.id, 20);
+                        const history = messages.map(m => ({
+                            role: m.sender === 'user' ? 'user' : 'assistant',
+                            content: m.message
+                        }));
                         botReply = await getChatReply(userMessage, history, botConfig.prompt);
                     }
                     
                     console.log(`[${botConfig.id}] 🔍 DEBUG: About to reply with bot message`);
                     await msg.reply(botReply);
-                    
-                    // GUARDAR respuesta del bot en lead_messages
                     await addLeadMessage(lead.id, 'bot', botReply);
-                    await chatHistoryDB.addMessageToHistory(senderId, 'assistant', botReply);
                 }
 
             } catch (error) {
@@ -370,7 +362,7 @@ async function getAllMessages(chatId, limit = 100) {
 }
 
 /**
- * Obtiene mensajes ya almacenados en la base de datos local
+ * Obtiene mensajes ya almacenados en la base de datos
  */
 async function getStoredMessages(leadId, limit = 1000) {
     try {
@@ -405,7 +397,6 @@ async function loadMessages(chat, limit = 50) {
         const messages = await loadHistory(chat, limit);
         console.log(`[${botConfig.id}] 🔍 DEBUG: senderId: ${senderId}, mensajes cargados: ${messages.length}`);
         
-        // Obtener o crear el lead
         let lead = await getOrCreateLead(botConfig.id, senderId);
         console.log(`[${botConfig.id}] 🔍 DEBUG: lead obtenido:`, {
             leadId: lead?.id,
@@ -442,7 +433,6 @@ async function loadMessages(chat, limit = 50) {
             
             if (!isAlreadyStored) {
                 console.log(`[${botConfig.id}] 🔍 DEBUG: Guardando nuevo mensaje para lead ${lead.id}`);
-                // Guardar mensaje en la base de datos
                 await addLeadMessage(lead.id, 'user', userMessage);
                 
                 // Extraer información del lead
