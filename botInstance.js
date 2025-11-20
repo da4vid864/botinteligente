@@ -44,33 +44,35 @@ function initializeWhatsApp() {
             args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage']
         });
         
-        const client = new Client({
-            authStrategy: new LocalAuth({ clientId: botConfig.id }),
-            puppeteer: {
-                args: [
-                    '--no-sandbox',
-                    '--disable-setuid-sandbox',
-                    '--disable-dev-shm-usage',
-                    '--disable-accelerated-2d-canvas',
-                    '--no-first-run',
-                    '--no-zygote',
-                    '--disable-gpu',
-                    '--disable-web-security',
-                    '--disable-features=VizDisplayCompositor'
-                ],
-                headless: true,
-                timeout: 120000,
-                ignoreHTTPSErrors: true,
-                handleSIGINT: false,
-                handleSIGTERM: false,
-                handleSIGHUP: false
-            },
-            takeoverOnConflict: false,
-            takeoverTimeoutMs: 0,
-            restartOnAuthFail: true,
-            qrMaxRetries: 5,
-            authTimeoutMs: 120000
-        });
+       const client = new Client({
+    authStrategy: new LocalAuth({ clientId: botConfig.id }),
+    puppeteer: {
+        args: [
+            '--no-sandbox',
+            '--disable-setuid-sandbox',
+            '--disable-dev-shm-usage',
+            '--disable-accelerated-2d-canvas',
+            '--no-first-run',
+            '--no-zygote',
+            '--disable-gpu',
+            '--disable-web-security',  // ✅ AGREGAR ESTA LÍNEA
+            '--disable-features=IsolateOrigins,site-per-process',  // ✅ AGREGAR ESTA LÍNEA
+            '--disable-features=VizDisplayCompositor'
+        ],
+        headless: true,
+        timeout: 120000,
+        ignoreHTTPSErrors: true,
+        handleSIGINT: false,
+        handleSIGTERM: false,
+        handleSIGHUP: false
+    },
+    takeoverOnConflict: false,
+    takeoverTimeoutMs: 0,
+    restartOnAuthFail: true,
+    qrMaxRetries: 5,
+    authTimeoutMs: 120000,
+    bypassCSP: true  // ✅ AGREGAR ESTA LÍNEA
+});
 
         whatsappClient = client;
 
