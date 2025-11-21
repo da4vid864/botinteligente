@@ -1,9 +1,11 @@
 // botInstance.js
 require('dotenv').config();
-const { Client, LocalAuth } = require('whatsapp-web.js');
+const { Client, LocalAuth, MessageMedia } = require('whatsapp-web.js');
 const QRCode = require('qrcode');
+const path = require('path');
 const { getChatReply } = require('./services/deepseekService');
 const { extractLeadInfo, generateFollowUpQuestion } = require('./services/leadExtractionService');
+const botImageService = require('./services/botImageService');
 const { 
     getOrCreateLead, 
     updateLeadInfo, 
@@ -15,8 +17,12 @@ const {
 } = require('./services/leadDbService');
 
 let botConfig;
-let isReady = false; // ✅ NUEVO: Bandera para saber si el bot está listo
+let isReady = false; 
+let isPaused = false; // NUEVO: Controla si el bot responde o no
+let whatsappClient;
+let availableImages = []; 
 
+// === COMUNICACIÓN CON EL PROCESO PADRE ===
 function sendStatusToDashboard(type, data = {}) {
     if (process.send) {
         process.send({ type, ...data, botId: botConfig.id });
@@ -26,46 +32,80 @@ function sendStatusToDashboard(type, data = {}) {
 process.on('message', (msg) => {
     if (msg.type === 'INIT') {
         botConfig = msg.config;
-        console.log(`[${botConfig.id}] Inicializando con nombre "${botConfig.name}"...`);
-        initializeWhatsApp();
+        // Si arranca deshabilitado, lo ponemos en pausa de inmediato
+        isPaused = botConfig.status === 'disabled';
+        
+        console.log(`[${botConfig.id}] Inicializando "${botConfig.name}" | Estado inicial: ${isPaused ? 'PAUSADO' : 'ACTIVO'}`);
+        
+        loadBotImages().then(() => {
+            initializeWhatsApp();
+        });
+
     } else if (msg.type === 'SEND_MESSAGE') {
         handleOutgoingMessage(msg.to, msg.message);
+    
+    } else if (msg.type === 'REFRESH_IMAGES') {
+        console.log(`[${botConfig.id}] 🔄 Solicitud de recarga de imágenes recibida`);
+        loadBotImages();
+
+    } else if (msg.type === 'SET_STATUS') {
+        // NUEVO: Cambio de estado dinámico sin reiniciar
+        if (msg.status === 'disabled') {
+            isPaused = true;
+            console.log(`[${botConfig.id}] ⏸️ Bot PAUSADO (Silenciado)`);
+            sendStatusToDashboard('UPDATE_BOT', { ...botConfig, status: 'disabled', runtimeStatus: 'DISABLED' });
+        } else {
+            isPaused = false;
+            console.log(`[${botConfig.id}] ▶️ Bot REANUDADO (Activo)`);
+            // Enviamos CONNECTED para que el dashboard sepa que está listo
+            sendStatusToDashboard('UPDATE_BOT', { ...botConfig, status: 'enabled', runtimeStatus: 'CONNECTED' });
+        }
     }
 });
 
-let whatsappClient;
+// === GESTIÓN DE IMÁGENES ===
+async function loadBotImages() {
+    try {
+        availableImages = await botImageService.getImagesByBot(botConfig.id);
+        console.log(`[${botConfig.id}] 🖼️ Imágenes cargadas en memoria: ${availableImages.length}`);
+    } catch (error) {
+        console.error(`[${botConfig.id}] ❌ Error cargando imágenes:`, error);
+    }
+}
 
+// === INICIALIZACIÓN DE WHATSAPP (OPTIMIZADA) ===
 function initializeWhatsApp() {
-    console.log(`[${botConfig.id}] 🔍 DEBUG: Inicializando WhatsApp Client...`);
+    console.log(`[${botConfig.id}] 🔍 DEBUG: Inicializando WhatsApp Client (Optimizado)...`);
     
     try {
         const client = new Client({
             authStrategy: new LocalAuth({ clientId: botConfig.id }),
             puppeteer: {
+                headless: 'new', // Modo headless moderno (más rápido)
                 args: [
                     '--no-sandbox',
                     '--disable-setuid-sandbox',
-                    '--disable-dev-shm-usage',
+                    '--disable-dev-shm-usage', // Usa disco en vez de RAM compartida
                     '--disable-accelerated-2d-canvas',
                     '--no-first-run',
                     '--no-zygote',
+                    '--single-process', // Importante para contenedores pequeños
                     '--disable-gpu',
-                    '--disable-web-security',
-                    '--disable-features=IsolateOrigins,site-per-process',
-                    '--disable-features=VizDisplayCompositor'
+                    '--disable-extensions',
+                    '--disable-component-update',
+                    '--disable-default-apps',
+                    '--mute-audio',
+                    '--no-default-browser-check',
+                    '--disable-infobars',
+                    '--disable-features=IsolateOrigins,site-per-process'
                 ],
-                headless: true,
-                timeout: 120000,
-                ignoreHTTPSErrors: true,
-                handleSIGINT: false,
-                handleSIGTERM: false,
-                handleSIGHUP: false
+                timeout: 180000, // Aumentado a 3 minutos
             },
             takeoverOnConflict: false,
             takeoverTimeoutMs: 0,
             restartOnAuthFail: true,
             qrMaxRetries: 5,
-            authTimeoutMs: 120000,
+            authTimeoutMs: 0, // Sin límite de tiempo para autenticar
             bypassCSP: true
         });
 
@@ -81,60 +121,43 @@ function initializeWhatsApp() {
             }
         });
 
-        client.on('loading_screen', (percent, message) => {
-            console.log(`[${botConfig.id}] 🔍 DEBUG: Loading screen - ${percent}%: ${message}`);
-        });
-
-        client.on('authenticated', () => {
-            console.log(`[${botConfig.id}] 🔍 DEBUG: Client authenticated successfully`);
-        });
-
-        client.on('auth_failure', (message) => {
-            console.error(`[${botConfig.id}] 🔍 DEBUG: Authentication failure:`, message);
-        });
-
         client.on('ready', async () => {
             console.log(`[${botConfig.id}] ✅ WhatsApp conectado!`);
-            sendStatusToDashboard('CONNECTED');
+            
+            // Si está pausado, reportamos DISABLED para que el UI se vea gris, si no CONNECTED
+            const statusReport = isPaused ? 'DISABLED' : 'CONNECTED';
+            sendStatusToDashboard(isPaused ? 'UPDATE_BOT' : 'CONNECTED', { 
+                ...botConfig, 
+                status: isPaused ? 'disabled' : 'enabled',
+                runtimeStatus: statusReport 
+            });
             
             try {
-                console.log(`[${botConfig.id}] 🔍 DEBUG: Cargando historial existente (sin responder)...`);
-                await loadExistingChats();
-                console.log(`[${botConfig.id}] 🔍 DEBUG: Historial cargado completamente`);
+                // Solo cargar historial si NO estamos pausados inicialmente para ahorrar recursos
+                if (!isPaused) {
+                    console.log(`[${botConfig.id}] 🔍 DEBUG: Cargando historial existente...`);
+                    await loadExistingChats();
+                }
                 
-                // ✅ IMPORTANTE: Marcar bot como listo DESPUÉS de cargar el historial
                 isReady = true;
-                console.log(`[${botConfig.id}] ✅ Bot listo para responder mensajes nuevos`);
+                console.log(`[${botConfig.id}] ✅ Bot listo (Estado: ${isPaused ? 'Pausado' : 'Activo'})`);
             } catch (error) {
                 console.error(`[${botConfig.id}] ❌ Error in loadExistingChats:`, error);
+                isReady = true; 
             }
         });
 
         client.on('disconnected', (reason) => {
             console.log(`[${botConfig.id}] ❌ Desconectado:`, reason);
-            isReady = false; // ✅ Marcar como no listo
+            isReady = false;
             sendStatusToDashboard('DISCONNECTED');
         });
 
-        client.on('error', (error) => {
-            console.error(`[${botConfig.id}] ❌ WhatsApp Client Error:`, error);
-        });
-    
         client.on('message', async (msg) => {
-            // ✅ IMPORTANTE: Solo procesar si el bot está listo (después de cargar historial)
-            if (!isReady) {
-                console.log(`[${botConfig.id}] ⏸️ Mensaje ignorado (bot aún cargando historial)`);
-                return;
-            }
+            // === BLOQUEO DE PAUSA ===
+            if (!isReady || isPaused) return; 
             
-            console.log(`[${botConfig.id}] 📨 Nuevo mensaje recibido en tiempo real`);
-            
-            if (!msg || !msg.from || !msg.body) {
-                console.log(`[${botConfig.id}] 🔍 DEBUG: Mensaje inválido omitido`);
-                return;
-            }
-            
-            if (msg.from.endsWith('@g.us')) return; // Ignorar grupos
+            if (!msg || !msg.from || !msg.body || msg.from.endsWith('@g.us')) return;
 
             const senderId = msg.from;
             const userMessage = msg.body;
@@ -143,119 +166,110 @@ function initializeWhatsApp() {
             try {
                 let lead = await getOrCreateLead(botConfig.id, senderId);
                 
-                if (!lead || !lead.id) {
-                    console.error(`[${botConfig.id}] ❌ Lead no válido para ${senderId}`);
-                    return;
-                }
+                if (!lead || !lead.id) return;
                 
-                // Guardar el mensaje
-                console.log(`[${botConfig.id}] 💾 Guardando mensaje para lead ${lead.id}`);
                 await addLeadMessage(lead.id, 'user', userMessage);
 
-                // Verificar si el lead ya está asignado a ventas
                 if (lead.status === 'assigned') {
-                    console.log(`[${botConfig.id}] 👤 Lead asignado a ventas, notificando dashboard`);
                     sendStatusToDashboard('NEW_MESSAGE_FOR_SALES', {
                         leadId: lead.id,
                         from: senderId,
                         message: userMessage
                     });
-                    return; // ✅ No responder automáticamente
+                    return;
                 }
 
-                // Sistema de captura inteligente
                 if (lead.status === 'capturing') {
-                    console.log(`[${botConfig.id}] 🔍 Procesando lead en captura`);
                     const extractedInfo = await extractLeadInfo(userMessage);
                     
                     if (Object.keys(extractedInfo).length > 0) {
                         lead = await updateLeadInfo(lead.id, extractedInfo);
-                        console.log(`[${botConfig.id}] ℹ️ Información extraída:`, extractedInfo);
                     }
                     
                     if (isLeadComplete(lead)) {
-                        console.log(`[${botConfig.id}] ✅ Lead completo, calificando...`);
                         lead = await qualifyLead(lead.id);
-                        
-                        let botReply;
-                        if (lead.phone === lead.whatsapp_number) {
-                            botReply = "¡Perfecto! Ya tengo toda tu información. Un miembro de nuestro equipo se pondrá en contacto contigo por este mismo número de WhatsApp muy pronto. ¡Gracias! 🎉";
-                        } else {
-                            botReply = "¡Perfecto! Ya tengo toda tu información. Un miembro de nuestro equipo se pondrá en contacto contigo muy pronto. ¡Gracias! 🎉";
-                        }
-                        
-                        await msg.reply(botReply);
-                        await addLeadMessage(lead.id, 'bot', botReply);
-                        
+                        const finalMsg = "¡Perfecto! Ya tengo toda tu información. Un asesor te contactará pronto. 🎉";
+                        await msg.reply(finalMsg);
+                        await addLeadMessage(lead.id, 'bot', finalMsg);
                         sendStatusToDashboard('NEW_QUALIFIED_LEAD', { lead });
                         return;
                     }
 
-                    // Generar respuesta del bot
-                    console.log(`[${botConfig.id}] 🤖 Generando respuesta...`);
+                    // Generación de respuesta con imágenes
                     const followUpQuestion = await generateFollowUpQuestion(lead);
-                    let botReply;
+                    let promptWithImages = botConfig.prompt;
                     
-                    // Obtener historial para contexto
+                    if (availableImages.length > 0) {
+                        const keywords = availableImages.map(img => img.keyword).join(', ');
+                        promptWithImages += `\n\n[INSTRUCCIÓN DEL SISTEMA DE IMÁGENES]:
+                        Tienes acceso a imágenes visuales sobre los siguientes temas: [${keywords}].
+                        Si el usuario pregunta explícitamente por alguno de estos temas o si crees que una imagen ayudaría a vender mejor,
+                        DEBES incluir la etiqueta [ENVIAR_IMAGEN: palabra_clave] al final de tu respuesta.`;
+                    }
+
                     const messages = await getLeadMessages(lead.id, 20);
                     const history = messages.map(m => ({
                         role: m.sender === 'user' ? 'user' : 'assistant',
                         content: m.message
                     }));
                     
+                    let botReply;
+                    const aiResponse = await getChatReply(userMessage, history, promptWithImages);
+                    
                     if (followUpQuestion) {
-                        const contextReply = await getChatReply(userMessage, history, botConfig.prompt);
-                        botReply = `${contextReply}\n\n${followUpQuestion}`;
+                        botReply = `${aiResponse}\n\n${followUpQuestion}`;
                     } else {
-                        botReply = await getChatReply(userMessage, history, botConfig.prompt);
+                        botReply = aiResponse;
                     }
                     
-                    console.log(`[${botConfig.id}] 💬 Enviando respuesta: ${botReply.substring(0, 50)}...`);
-                    await msg.reply(botReply);
-                    await addLeadMessage(lead.id, 'bot', botReply);
+                    const imageTagRegex = /
+$$
+ENVIAR_IMAGEN:\s*(.+?)
+$$/i;
+                    const match = botReply.match(imageTagRegex);
+                    let imageToSend = null;
+
+                    if (match) {
+                        const keyword = match[1].trim().toLowerCase();
+                        imageToSend = availableImages.find(img => img.keyword === keyword);
+                        botReply = botReply.replace(match[0], '').trim();
+                    }
+
+                    if (botReply) {
+                        await msg.reply(botReply);
+                        await addLeadMessage(lead.id, 'bot', botReply);
+                    }
+
+                    if (imageToSend) {
+                        try {
+                            const imagePath = path.join(__dirname, 'public', 'uploads', imageToSend.filename);
+                            const media = MessageMedia.fromFilePath(imagePath);
+                            await client.sendMessage(msg.from, media, { caption: imageToSend.original_name });
+                            await addLeadMessage(lead.id, 'bot', `[Imagen enviada: ${imageToSend.original_name}]`);
+                        } catch (imgError) {
+                            console.error(`[${botConfig.id}] ❌ Error enviando imagen:`, imgError);
+                        }
+                    }
                 }
 
             } catch (error) {
                 console.error(`[${botConfig.id}] ❌ Error procesando mensaje:`, error);
-                try {
-                    await msg.reply("Ups, algo salió mal. Intenta de nuevo.");
-                } catch (replyError) {
-                    console.error(`[${botConfig.id}] ❌ Error enviando mensaje de error:`, replyError);
-                }
             }
         });
 
-        const initializationTimeout = setTimeout(() => {
-            console.error(`[${botConfig.id}] ❌ WhatsApp client initialization timeout (120s)`);
-        }, 120000);
-        
+        // Reintentos automáticos si puppeteer falla al inicio
         let retryCount = 0;
-        const maxRetries = 3;
-        
         const attemptInitialization = async () => {
             try {
-                console.log(`[${botConfig.id}] 🔍 DEBUG: Initialization attempt ${retryCount + 1}/${maxRetries}`);
                 await client.initialize();
-                clearTimeout(initializationTimeout);
-                console.log(`[${botConfig.id}] ✅ WhatsApp client initialized successfully`);
             } catch (error) {
-                clearTimeout(initializationTimeout);
-                console.error(`[${botConfig.id}] ❌ Error inicializando (attempt ${retryCount + 1}):`, error.message);
-                
-                if (error.message.includes('Execution context was destroyed')) {
-                    if (retryCount < maxRetries) {
-                        retryCount++;
-                        const retryDelay = Math.pow(2, retryCount) * 1000;
-                        console.log(`[${botConfig.id}] 🔄 Retry en ${retryDelay}ms...`);
-                        setTimeout(attemptInitialization, retryDelay);
-                        return;
-                    }
+                if (retryCount < 3) {
+                    retryCount++;
+                    console.log(`[${botConfig.id}] 🔄 Reintento de inicio ${retryCount}/3`);
+                    setTimeout(attemptInitialization, 5000);
                 }
-                
-                console.error(`[${botConfig.id}] ❌ Initialization failed after ${retryCount + 1} attempts`);
             }
         };
-        
         attemptInitialization();
         
     } catch (error) {
@@ -263,158 +277,69 @@ function initializeWhatsApp() {
     }
 }
 
-/**
- * Obtiene todos los chats de WhatsApp
- */
-async function getAllChats() {
-    if (!whatsappClient) {
-        console.error('Cliente de WhatsApp no inicializado');
-        return [];
-    }
+// === FUNCIONES AUXILIARES ===
 
+async function getAllChats() {
+    if (!whatsappClient) return [];
     try {
         const chats = await whatsappClient.getChats();
-        const individualChats = chats.filter(chat => !chat.isGroup);
-        console.log(`[${botConfig.id}] 📚 Encontrados ${individualChats.length} chats individuales`);
-        return individualChats;
-    } catch (error) {
-        console.error(`[${botConfig.id}] ❌ Error obteniendo chats:`, error);
-        return [];
-    }
+        return chats.filter(chat => !chat.isGroup);
+    } catch (error) { return []; }
 }
 
-/**
- * Carga el historial de mensajes de un chat
- */
 async function loadHistory(chat, limit = 100) {
-    if (!whatsappClient) {
-        console.error('Cliente de WhatsApp no inicializado');
-        return [];
-    }
-
-    try {
-        const messages = await chat.fetchMessages({ limit });
-        console.log(`[${botConfig.id}] 📖 Cargados ${messages.length} mensajes`);
-        return messages;
-    } catch (error) {
-        console.error(`[${botConfig.id}] ❌ Error cargando historial:`, error);
-        return [];
-    }
+    if (!whatsappClient) return [];
+    try { return await chat.fetchMessages({ limit }); } catch (error) { return []; }
 }
 
-/**
- * Carga mensajes existentes SIN generar respuestas automáticas
- * Solo guarda en BD y extrae información
- */
 async function loadMessages(chat, limit = 50) {
     try {
-        if (!chat || !chat.id || !chat.id._serialized) {
-            console.error(`[${botConfig.id}] ❌ Chat object inválido`);
-            return null;
-        }
-        
+        if (!chat || !chat.id || !chat.id._serialized) return null;
         const senderId = chat.id._serialized;
-        console.log(`[${botConfig.id}] 📂 Procesando historial de: ${senderId}`);
-        
         const messages = await loadHistory(chat, limit);
-        
         let lead = await getOrCreateLead(botConfig.id, senderId);
+        if (!lead) return null;
         
-        if (!lead || !lead.id) {
-            console.error(`[${botConfig.id}] ❌ Lead no válido`);
-            return null;
-        }
-        
-        // Procesar cada mensaje del historial (solo guardar, NO responder)
         for (const message of messages) {
             if (!message || message.fromMe) continue;
-            
             const userMessage = message.body;
             if (!userMessage || userMessage.trim() === '') continue;
             
-            // Verificar si ya está guardado
             const storedMessages = await getLeadMessages(lead.id, 1000);
             const isAlreadyStored = storedMessages.some(storedMsg =>
                 storedMsg.message === userMessage && storedMsg.sender === 'user'
             );
             
             if (!isAlreadyStored) {
-                // Solo guardar, NO responder
                 await addLeadMessage(lead.id, 'user', userMessage);
-                
-                // Extraer información
                 try {
                     const extractedInfo = await extractLeadInfo(userMessage);
                     if (Object.keys(extractedInfo).length > 0) {
                         lead = await updateLeadInfo(lead.id, extractedInfo);
                     }
-                } catch (extractError) {
-                    console.error(`[${botConfig.id}] ❌ Error extrayendo info:`, extractError);
-                }
+                } catch (e) {}
             }
         }
-        
-        // Verificar si está completo (sin notificar ni responder)
         if (isLeadComplete(lead) && lead.status === 'capturing') {
             lead = await qualifyLead(lead.id);
-            console.log(`[${botConfig.id}] ✅ Lead ${lead.id} calificado del historial (sin notificar)`);
-            // ✅ NO enviar notificación aquí para evitar duplicados
         }
-        
         return lead;
-    } catch (error) {
-        console.error(`[${botConfig.id}] ❌ Error en loadMessages:`, error);
-        return null;
-    }
+    } catch (error) { return null; }
 }
 
-/**
- * Carga y procesa todos los chats existentes al conectar
- * Solo guarda historial, NO genera respuestas
- */
 async function loadExistingChats() {
     try {
-        console.log(`[${botConfig.id}] 🕐 Iniciando carga de historial...`);
         const chats = await getAllChats();
-        
-        let processedCount = 0;
-        let qualifiedCount = 0;
-        
-        for (const chat of chats) {
-            try {
-                const lead = await loadMessages(chat, 50);
-                if (lead) {
-                    processedCount++;
-                    if (lead.status === 'qualified') {
-                        qualifiedCount++;
-                    }
-                }
-            } catch (chatError) {
-                console.error(`[${botConfig.id}] ❌ Error procesando chat:`, chatError);
-            }
-        }
-        
-        console.log(`[${botConfig.id}] ✅ Historial procesado: ${processedCount} chats, ${qualifiedCount} leads calificados`);
-        console.log(`[${botConfig.id}] 🎯 Ahora el bot solo responderá a mensajes NUEVOS en tiempo real`);
-        
-    } catch (error) {
-        console.error(`[${botConfig.id}] ❌ Error cargando chats existentes:`, error);
-    }
+        for (const chat of chats) { await loadMessages(chat, 20); }
+    } catch (error) {}
 }
 
-/**
- * Maneja el envío de mensajes salientes (desde el panel de ventas)
- */
 async function handleOutgoingMessage(to, message) {
-    if (!whatsappClient) {
-        console.error('Cliente de WhatsApp no inicializado');
-        return;
-    }
-
+    if (!whatsappClient) return;
     try {
         await whatsappClient.sendMessage(to, message);
-        console.log(`[${botConfig.id}] ✅ Mensaje enviado a ${to}`);
+        console.log(`[${botConfig.id}] ✅ Mensaje saliente enviado a ${to}`);
     } catch (error) {
-        console.error(`[${botConfig.id}] ❌ Error enviando mensaje:`, error);
+        console.error(`[${botConfig.id}] ❌ Error enviando mensaje saliente:`, error);
     }
 }

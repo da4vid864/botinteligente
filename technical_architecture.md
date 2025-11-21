@@ -17,6 +17,7 @@ The WhatsApp Bot Manager is a sophisticated multi-tenant platform that enables b
 - **AI Service**: DeepSeek Chat API
 - **WhatsApp Integration**: whatsapp-web.js (pedroslopez fork)
 - **QR Code Generation**: qrcode 1.5.3
+- **File Upload Management**: Multer 2.0.2
 
 ### Data Layer
 - **Database**: PostgreSQL with pg 8.11.3
@@ -28,6 +29,7 @@ The WhatsApp Bot Manager is a sophisticated multi-tenant platform that enables b
 - **OAuth Provider**: Google OAuth 2.0 with passport-google-oauth20 2.0.0
 - **Session Security**: JWT tokens with configurable secrets
 - **Cookie Management**: cookie-parser 1.4.6
+- **Payment Processing**: Stripe integration for subscription management
 
 ### Infrastructure
 - **Deployment Platform**: Railway.app
@@ -57,6 +59,12 @@ graph TB
             SCHEDEXEC[Scheduler Executor]
         end
         
+        subgraph "SaaS Services"
+            USER[User Service]
+            SUB[Subscription Service]
+            IMG[Bot Image Service]
+        end
+        
         subgraph "User Roles"
             ADMIN[Admin Dashboard]
             VENDOR[Sales Panel]
@@ -69,6 +77,9 @@ graph TB
         LEADDB[Lead Tables]
         SCHEDDB[Schedule Tables]
         FEATDB[Feature Tables]
+        USERDB[User Tables]
+        SUBDB[Subscription Tables]
+        IMGDB[Image Tables]
     end
 
     subgraph "Bot Instances"
@@ -85,6 +96,9 @@ graph TB
     DASH --> AUTH
     DASH --> SCHED
     DASH --> SCHEDEXEC
+    DASH --> USER
+    DASH --> SUB
+    DASH --> IMG
     WS --> BM
     BM --> BOT1
     BM --> BOT2
@@ -98,11 +112,17 @@ graph TB
     SCHED --> DB
     SCHEDEXEC --> DB
     AUTH --> DB
+    USER --> DB
+    SUB --> DB
+    IMG --> DB
     
     DB --> BOTDB
     DB --> LEADDB
     DB --> SCHEDDB
     DB --> FEATDB
+    DB --> USERDB
+    DB --> SUBDB
+    DB --> IMGDB
 ```
 
 ### Core Components
@@ -136,6 +156,11 @@ graph TB
 - **DeepSeek Service** ([`services/deepseekService.js`](services/deepseekService.js:1)): AI conversation handling with DeepSeek API
 - **Lead Extraction Service** ([`services/leadExtractionService.js`](services/leadExtractionService.js:1)): Intelligent contact information parsing
 - **Chat History Service** ([`services/chatHistoryService.js`](services/chatHistoryService.js:1)): Per-bot conversation history management
+
+#### 4. SaaS Platform Services
+- **User Service** ([`services/userService.js`](services/userService.js:1)): Team member management with database-driven roles and hybrid authentication system
+- **Subscription Service** ([`services/subscriptionService.js`](services/subscriptionService.js:1)): Freemium model with Stripe integration for payment processing and plan management
+- **Bot Image Service** ([`services/botImageService.js`](services/botImageService.js:1)): Media management for AI-powered image sending with keyword-based selection
 
 #### 4. Authentication Layer
 - **Auth Controller** ([`auth/authController.js`](auth/authController.js:1)): Google OAuth callback handling and JWT token generation
@@ -334,13 +359,14 @@ cmd = "npm start"
 
 ## Authentication & Security Architecture
 
-### Enhanced OAuth 2.0 Flow with Role-Based Access
+### Enhanced Hybrid Role System with Team Management
 ```mermaid
 sequenceDiagram
     participant U as User
     participant D as Dashboard
     participant G as Google OAuth
     participant A as Auth Service
+    participant US as User Service
     participant DB as Database
 
     U->>D: Access /login
@@ -348,28 +374,42 @@ sequenceDiagram
     U->>G: Authenticate
     G->>D: Callback with Code
     D->>A: Verify & Create JWT
-    A->>DB: Check Role Permissions
-    DB->>A: Return User Role
-    A->>D: Set Auth Cookie
-    D->>U: Redirect Based on Role
+    A->>US: Check Hybrid Role Assignment
+    US->>DB: Query User & Environment Roles
+    DB->>US: Return User Data
+    US->>A: Hybrid Role Determination
     
-    alt Admin Role
+    alt Admin Role (Environment Variable)
+        A->>D: Set Admin Role
         D->>U: Show Bot Dashboard
-    else Vendor Role
+    else Vendor Role (Database Team)
+        A->>D: Set Vendor Role
         D->>U: Show Sales Panel
     else Unauthorized
+        A->>D: Set Unauthorized Role
         D->>U: Show Access Denied
     end
+    
+    A->>US: Update Last Login
+    US->>DB: Record Login Activity
 ```
+
+### Hybrid Role Assignment System
+- **Environment-Based Admins**: Primary administrators defined in ADMIN_EMAILS environment variable
+- **Database-Managed Teams**: Vendors and team members managed through User Service with activation controls
+- **Dynamic Role Resolution**: System checks environment variables first, then database for role assignment
+- **Team Management**: Admins can add, remove, and activate/deactivate team members via User Service
+- **Status Tracking**: Last login timestamps and active/inactive user status monitoring
 
 ### Security Measures
 - **JWT Token Management**: Secure token storage in HTTP-only cookies with 7-day expiration
-- **Role-Based Access Control**: Admin and Vendor roles with distinct permissions
-- **Environment Configuration**: ADMIN_EMAILS and VENDOR_EMAILS for role assignment
+- **Hybrid Role-Based Access Control**: Environment variables + database teams with distinct permissions
+- **User Status Controls**: Active/inactive user management with admin oversight
 - **Session Protection**: Automatic token validation and cleanup
 - **Environment Security**: Sensitive configuration in environment variables
 - **WebSocket Authentication**: JWT validation for real-time connections
 - **Content Security Policy**: CSP headers for XSS protection
+- **Team-Based Access**: Database-driven team membership with audit trails
 
 ## Database Schema
 
