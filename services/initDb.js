@@ -8,7 +8,21 @@ async function initializeDatabase() {
     console.log('🔄 Inicializando base de datos...');
     
     try {
-        // 1. Tabla de bots
+        // 1. Tabla de usuarios y equipos
+        await pool.query(`
+            CREATE TABLE IF NOT EXISTS users (
+                id SERIAL PRIMARY KEY,
+                email TEXT NOT NULL UNIQUE,
+                role TEXT NOT NULL DEFAULT 'vendor',
+                added_by TEXT NOT NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                last_login TIMESTAMP,
+                is_active BOOLEAN DEFAULT TRUE
+            );
+        `);
+        console.log('✅ Tabla users inicializada');
+
+        // 2. Tabla de bots
         await pool.query(`
             CREATE TABLE IF NOT EXISTS bots (
                 id TEXT PRIMARY KEY NOT NULL,
@@ -22,7 +36,7 @@ async function initializeDatabase() {
         `);
         console.log('✅ Tabla bots inicializada');
 
-        // 2. Tabla de leads
+        // 3. Tabla de leads
         await pool.query(`
             CREATE TABLE IF NOT EXISTS leads (
                 id SERIAL PRIMARY KEY,
@@ -42,7 +56,7 @@ async function initializeDatabase() {
         `);
         console.log('✅ Tabla leads inicializada');
 
-        // 3. Tabla de mensajes
+        // 4. Tabla de mensajes de leads
         await pool.query(`
             CREATE TABLE IF NOT EXISTS lead_messages (
                 id SERIAL PRIMARY KEY,
@@ -54,7 +68,7 @@ async function initializeDatabase() {
         `);
         console.log('✅ Tabla lead_messages inicializada');
 
-        // 4. Tabla de features
+        // 5. Tabla de features
         await pool.query(`
             CREATE TABLE IF NOT EXISTS bot_features (
                 id SERIAL PRIMARY KEY,
@@ -70,7 +84,7 @@ async function initializeDatabase() {
         `);
         console.log('✅ Tabla bot_features inicializada');
 
-        // 5. Tabla de schedules
+        // 6. Tabla de schedules
         await pool.query(`
             CREATE TABLE IF NOT EXISTS schedules (
                 id SERIAL PRIMARY KEY,

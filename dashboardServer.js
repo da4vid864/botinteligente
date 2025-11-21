@@ -619,6 +619,74 @@ app.delete('/api/schedule/:scheduleId', requireAdmin, async (req, res) => {
     res.json({ message: 'Tarea cancelada exitosamente' });
 });
 
+const userService = require('./services/userService');
+
+// === API: OBTENER MIEMBROS DEL EQUIPO (SOLO ADMIN) ===
+app.get('/api/team', requireAdmin, async (req, res) => {
+    try {
+        const members = await userService.getTeamMembers(req.user.email);
+        res.json(members);
+    } catch (error) {
+        console.error('Error obteniendo equipo:', error);
+        res.status(500).json({ message: 'Error obteniendo equipo' });
+    }
+});
+
+// === API: AGREGAR MIEMBRO AL EQUIPO (SOLO ADMIN) ===
+app.post('/api/team', requireAdmin, async (req, res) => {
+    try {
+        const { email, role } = req.body;
+        
+        if (!email || !role) {
+            return res.status(400).json({ message: 'Email y rol son requeridos' });
+        }
+        
+        if (!['vendor', 'admin'].includes(role)) {
+            return res.status(400).json({ message: 'Rol inválido' });
+        }
+        
+        const newMember = await userService.addTeamMember(email, role, req.user.email);
+        res.json({ 
+            message: 'Miembro agregado exitosamente', 
+            user: newMember 
+        });
+    } catch (error) {
+        console.error('Error agregando miembro:', error);
+        res.status(400).json({ message: error.message });
+    }
+});
+
+// === API: CAMBIAR ESTADO DE USUARIO (SOLO ADMIN) ===
+app.patch('/api/team/:userId/toggle', requireAdmin, async (req, res) => {
+    try {
+        const { userId } = req.params;
+        const updatedUser = await userService.toggleUserStatus(userId, req.user.email);
+        
+        if (!updatedUser) {
+            return res.status(404).json({ message: 'Usuario no encontrado' });
+        }
+        
+        res.json({ 
+            message: updatedUser.is_active ? 'Usuario activado' : 'Usuario desactivado',
+            user: updatedUser 
+        });
+    } catch (error) {
+        console.error('Error cambiando estado:', error);
+        res.status(500).json({ message: 'Error cambiando estado del usuario' });
+    }
+});
+
+// === API: ELIMINAR MIEMBRO DEL EQUIPO (SOLO ADMIN) ===
+app.delete('/api/team/:userId', requireAdmin, async (req, res) => {
+    try {
+        const { userId } = req.params;
+        await userService.removeTeamMember(userId, req.user.email);
+        res.json({ message: 'Usuario eliminado exitosamente' });
+    } catch (error) {
+        console.error('Error eliminando usuario:', error);
+        res.status(500).json({ message: 'Error eliminando usuario' });
+    }
+});
 // === INICIAR SERVIDOR CON INICIALIZACIÓN DE DB ===
 async function startServer() {
     try {

@@ -1,9 +1,10 @@
 // auth/authMiddleware.js
 const jwt = require('jsonwebtoken');
-const { JWT_SECRET, ADMIN_EMAILS, VENDOR_EMAILS } = process.env;
+const { JWT_SECRET } = process.env;
+const userService = require('../services/userService');
 
 // Middleware para adjuntar el usuario a `req` si existe un token válido
-const attachUser = (req, res, next) => {
+const attachUser = async (req, res, next) => {
   const token = req.cookies.auth_token;
   req.user = null;
 
@@ -11,19 +12,28 @@ const attachUser = (req, res, next) => {
     try {
       const decoded = jwt.verify(token, JWT_SECRET);
       
-      // Determinar el rol del usuario
-      const adminEmailsList = ADMIN_EMAILS ? ADMIN_EMAILS.split(',') : [];
-      const vendorEmailsList = VENDOR_EMAILS ? VENDOR_EMAILS.split(',') : [];
-      
-      if (adminEmailsList.includes(decoded.email)) {
+      // Verificar si es admin (de las variables de entorno)
+      if (userService.isAdmin(decoded.email)) {
         decoded.role = 'admin';
-      } else if (vendorEmailsList.includes(decoded.email)) {
-        decoded.role = 'vendor';
-      } else {
-        decoded.role = 'unauthorized';
+        req.user = decoded;
+        next();
+        return;
       }
       
-      req.user = decoded;
+      // Si no es admin, verificar en la base de datos
+      const dbUser = await userService.getUserByEmail(decoded.email);
+      
+      if (dbUser && dbUser.is_active) {
+        decoded.role = dbUser.role;
+        decoded.addedBy = dbUser.added_by;
+        req.user = decoded;
+        
+        // Actualizar último login
+        await userService.updateLastLogin(decoded.email);
+      } else {
+        decoded.role = 'unauthorized';
+        req.user = decoded;
+      }
     } catch (err) {
       console.warn("Token JWT inválido, limpiando cookie.");
       res.clearCookie('auth_token');

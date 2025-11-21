@@ -1,19 +1,28 @@
 // auth/authController.js
 const jwt = require('jsonwebtoken');
-const { JWT_SECRET, ADMIN_EMAILS, VENDOR_EMAILS } = process.env;
+const { JWT_SECRET } = process.env;
+const userService = require('../services/userService');
 
-const handleGoogleCallback = (req, res) => {
+const handleGoogleCallback = async (req, res) => {
   const email = req.user.profile.emails[0].value;
   
-  // Determinar el rol
-  const adminEmailsList = ADMIN_EMAILS ? ADMIN_EMAILS.split(',') : [];
-  const vendorEmailsList = VENDOR_EMAILS ? VENDOR_EMAILS.split(',') : [];
-  
+  // Verificar si es admin
   let role = 'unauthorized';
-  if (adminEmailsList.includes(email)) {
+  let addedBy = null;
+  
+  if (userService.isAdmin(email)) {
     role = 'admin';
-  } else if (vendorEmailsList.includes(email)) {
-    role = 'vendor';
+  } else {
+    // Verificar en la base de datos
+    const dbUser = await userService.getUserByEmail(email);
+    
+    if (dbUser && dbUser.is_active) {
+      role = dbUser.role;
+      addedBy = dbUser.added_by;
+      
+      // Actualizar último login
+      await userService.updateLastLogin(email);
+    }
   }
   
   const tokenPayload = {
@@ -21,7 +30,8 @@ const handleGoogleCallback = (req, res) => {
     displayName: req.user.profile.displayName,
     email: email,
     picture: req.user.profile.photos[0].value,
-    role: role
+    role: role,
+    addedBy: addedBy
   };
 
   const token = jwt.sign(tokenPayload, JWT_SECRET, { expiresIn: '7d' });
@@ -35,14 +45,14 @@ const handleGoogleCallback = (req, res) => {
 
   // Redirigir según el rol
   if (role === 'admin') {
-    res.redirect('/'); // Dashboard de gestión de bots
+    res.redirect('/');
   } else if (role === 'vendor') {
-    res.redirect('/sales'); // Panel de ventas
+    res.redirect('/sales');
   } else {
     res.status(403).send(`
       <h1>Acceso Denegado</h1>
       <p>Tu cuenta (${email}) no está autorizada para acceder a este sistema.</p>
-      <p>Contacta al administrador.</p>
+      <p>Contacta al administrador para solicitar acceso.</p>
       <a href="/auth/logout">Cerrar sesión</a>
     `);
   }

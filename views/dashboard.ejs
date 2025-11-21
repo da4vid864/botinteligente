@@ -5,7 +5,62 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Panel de Control - WhatsApp Bots</title>
   <link rel="stylesheet" href="/style.css">
+  <style>
+.team-member-card {
+  background: var(--bg-color);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  padding: 1rem;
+  margin-bottom: 0.5rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.team-member-info {
+  flex: 1;
+}
+
+.team-member-email {
+  font-weight: 600;
+  margin-bottom: 0.25rem;
+}
+
+.team-member-meta {
+  font-size: 0.85rem;
+  color: #888;
+}
+
+.team-member-actions {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.badge {
+  display: inline-block;
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.badge-admin {
+  background-color: rgba(255, 193, 7, 0.2);
+  color: var(--status-pending);
+}
+
+.badge-vendor {
+  background-color: rgba(13, 110, 253, 0.2);
+  color: #0d6efd;
+}
+
+.badge-inactive {
+  background-color: rgba(220, 53, 69, 0.2);
+  color: #dc3545;
+}
+</style>
 </head>
+
 <body>
   <div class="container">
 <header>
@@ -153,6 +208,38 @@
       </div>
     </div>
   </div>
+  <div id="team-modal-backdrop" class="modal-backdrop">
+  <div id="team-modal" class="modal" style="max-width: 800px;">
+    <h2>👥 Gestión de Equipo</h2>
+    
+    <div style="margin-bottom: 2rem;">
+      <h3>Agregar Nuevo Miembro</h3>
+      <form id="add-team-member-form" style="display: flex; gap: 1rem; align-items: end;">
+        <div class="form-group" style="flex: 1;">
+          <label for="member-email">Email</label>
+          <input type="email" id="member-email" placeholder="usuario@ejemplo.com" required>
+        </div>
+        <div class="form-group" style="width: 150px;">
+          <label for="member-role">Rol</label>
+          <select id="member-role" required>
+            <option value="vendor">Vendedor</option>
+            <option value="admin">Admin</option>
+          </select>
+        </div>
+        <button type="submit" class="btn">Agregar</button>
+      </form>
+    </div>
+
+    <div>
+      <h3>Miembros del Equipo</h3>
+      <div id="team-members-list"></div>
+    </div>
+
+    <div class="form-actions" style="margin-top: 2rem;">
+      <button type="button" id="team-close-btn" class="btn btn-secondary">Cerrar</button>
+    </div>
+  </div>
+</div>
 
   <script>
     const currentUserEmail = '<%= user.email %>';
@@ -457,6 +544,147 @@
         
         console.log('✅ Tarjeta procesada exitosamente para bot:', botData.id);
     }
+    // views/dashboard.ejs - Dentro del <script> existente
+
+// === GESTIÓN DE EQUIPO ===
+const teamModalBackdrop = document.getElementById('team-modal-backdrop');
+const teamCloseBtn = document.getElementById('team-close-btn');
+const addTeamMemberForm = document.getElementById('add-team-member-form');
+
+// Crear botón para abrir gestión de equipo en el header
+const teamManagementBtn = document.createElement('button');
+teamManagementBtn.className = 'btn';
+teamManagementBtn.style.cssText = 'background-color: #0d6efd; margin-left: 0.5rem;';
+teamManagementBtn.innerHTML = '👥 Gestionar Equipo';
+teamManagementBtn.addEventListener('click', openTeamManagement);
+
+// Agregar el botón al header (después del botón de Panel de Ventas)
+const salesBtn = document.querySelector('a[href="/sales"]');
+if (salesBtn) {
+    salesBtn.parentNode.insertBefore(teamManagementBtn, salesBtn.nextSibling);
+}
+
+teamCloseBtn.addEventListener('click', () => teamModalBackdrop.style.display = 'none');
+teamModalBackdrop.addEventListener('click', (e) => {
+    if (e.target === teamModalBackdrop) teamModalBackdrop.style.display = 'none';
+});
+
+addTeamMemberForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    
+    const email = document.getElementById('member-email').value;
+    const role = document.getElementById('member-role').value;
+    
+    try {
+        const response = await fetch('/api/team', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email, role })
+        });
+        
+        const result = await response.json();
+        
+        if (response.ok) {
+            alert(`✅ Usuario ${email} agregado exitosamente`);
+            addTeamMemberForm.reset();
+            loadTeamMembers();
+        } else {
+            alert(`❌ Error: ${result.message}`);
+        }
+    } catch (error) {
+        alert('Error agregando usuario');
+        console.error(error);
+    }
+});
+
+async function openTeamManagement() {
+    teamModalBackdrop.style.display = 'flex';
+    await loadTeamMembers();
+}
+
+async function loadTeamMembers() {
+    try {
+        const response = await fetch('/api/team');
+        const members = await response.json();
+        
+        const container = document.getElementById('team-members-list');
+        
+        if (members.length === 0) {
+            container.innerHTML = '<p style="text-align: center; color: #666; padding: 2rem;">No hay miembros en el equipo</p>';
+            return;
+        }
+        
+        container.innerHTML = members.map(member => `
+            <div class="team-member-card">
+                <div class="team-member-info">
+                    <div class="team-member-email">${member.email}</div>
+                    <div class="team-member-meta">
+                        <span class="badge badge-${member.role}">${member.role === 'admin' ? '👑 Admin' : '👤 Vendedor'}</span>
+                        ${!member.is_active ? '<span class="badge badge-inactive">Inactivo</span>' : ''}
+                        <span style="margin-left: 0.5rem;">Agregado: ${new Date(member.created_at).toLocaleDateString()}</span>
+                        ${member.last_login ? `<span style="margin-left: 0.5rem;">Último login: ${new Date(member.last_login).toLocaleDateString()}</span>` : ''}
+                    </div>
+                </div>
+                <div class="team-member-actions">
+                    <button class="btn btn-small ${member.is_active ? 'btn-secondary' : 'btn-success'}" 
+                            onclick="toggleMemberStatus(${member.id})">
+                        ${member.is_active ? '⏸️ Desactivar' : '▶️ Activar'}
+                    </button>
+                    <button class="btn btn-small btn-danger" 
+                            onclick="removeMember(${member.id}, '${member.email}')">
+                        🗑️ Eliminar
+                    </button>
+                </div>
+            </div>
+        `).join('');
+    } catch (error) {
+        console.error('Error cargando equipo:', error);
+    }
+}
+
+async function toggleMemberStatus(userId) {
+    try {
+        const response = await fetch(`/api/team/${userId}/toggle`, {
+            method: 'PATCH'
+        });
+        
+        const result = await response.json();
+        
+        if (response.ok) {
+            alert(`✅ ${result.message}`);
+            await loadTeamMembers();
+        } else {
+            alert(`❌ Error: ${result.message}`);
+        }
+    } catch (error) {
+        alert('Error cambiando estado del usuario');
+        console.error(error);
+    }
+}
+
+async function removeMember(userId, email) {
+    if (!confirm(`¿Seguro que quieres eliminar a ${email}?\nEsta acción es irreversible.`)) {
+        return;
+    }
+    
+    try {
+        const response = await fetch(`/api/team/${userId}`, {
+            method: 'DELETE'
+        });
+        
+        const result = await response.json();
+        
+        if (response.ok) {
+            alert('✅ Usuario eliminado exitosamente');
+            await loadTeamMembers();
+        } else {
+            alert(`❌ Error: ${result.message}`);
+        }
+    } catch (error) {
+        alert('Error eliminando usuario');
+        console.error(error);
+    }
+}
 </script>
 </body>
 </html>
