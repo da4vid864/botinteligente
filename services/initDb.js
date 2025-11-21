@@ -8,7 +8,7 @@ async function initializeDatabase() {
     console.log('🔄 Inicializando base de datos...');
     
     try {
-        // 1. Tabla de bots (primero porque otras dependen de ella)
+        // 1. Tabla de bots
         await pool.query(`
             CREATE TABLE IF NOT EXISTS bots (
                 id TEXT PRIMARY KEY NOT NULL,
@@ -42,7 +42,7 @@ async function initializeDatabase() {
         `);
         console.log('✅ Tabla leads inicializada');
 
-        // 3. Tabla de mensajes de leads
+        // 3. Tabla de mensajes
         await pool.query(`
             CREATE TABLE IF NOT EXISTS lead_messages (
                 id SERIAL PRIMARY KEY,
@@ -90,6 +90,7 @@ async function initializeDatabase() {
         return true;
     } catch (error) {
         console.error('❌ Error inicializando base de datos:', error);
+        console.error('Stack trace:', error.stack);
         throw error;
     }
 }
