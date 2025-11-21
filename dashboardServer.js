@@ -475,7 +475,108 @@ app.delete('/api/images/:imageId', requireAdmin, async (req, res) => {
 // === APIs TEAM, FEATURES, SCHEDULES (Se asume que ya existen en tu archivo original, mantenlas) ===
 // Si faltaban las rutas de team/features que estaban en versiones anteriores, agrégalas aquí.
 // Por ahora mantengo el flujo de bots que es lo crítico.
+// ==========================================
+// === RUTAS API FALTANTES (Features, Team, Schedules) ===
+// ==========================================
 
+// 1. API FEATURES (Configuración del Bot)
+app.get('/api/bot/:id/features', requireAuth, async (req, res) => {
+    try {
+        const features = await botConfigService.getBotFeatures(req.params.id);
+        res.json(features);
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'Error obteniendo features' });
+    }
+});
+
+app.patch('/api/bot/:id/features', requireAuth, async (req, res) => {
+    try {
+        const updated = await botConfigService.updateBotFeatures(req.params.id, req.body);
+        // Notificar al bot en tiempo real que su configuración cambió
+        const botProcess = activeBots.get(req.params.id);
+        if (botProcess) {
+            botProcess.send({ type: 'UPDATE_FEATURES', features: updated });
+        }
+        res.json(updated);
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'Error actualizando features' });
+    }
+});
+
+// 2. API TEAM (Gestión de Equipo)
+app.get('/api/team', requireAdmin, async (req, res) => {
+    try {
+        const members = await userService.getTeamMembers(req.user.email);
+        res.json(members);
+    } catch (error) {
+        res.status(500).json({ message: 'Error obteniendo equipo' });
+    }
+});
+
+app.post('/api/team', requireAdmin, async (req, res) => {
+    const { email, role } = req.body;
+    if (!email) return res.status(400).json({ message: 'Email requerido' });
+    
+    try {
+        const newMember = await userService.addTeamMember(email, role, req.user.email);
+        res.json(newMember);
+    } catch (error) {
+        res.status(400).json({ message: error.message });
+    }
+});
+
+app.patch('/api/team/:id/toggle', requireAdmin, async (req, res) => {
+    try {
+        await userService.toggleUserStatus(req.params.id, req.user.email);
+        res.json({ message: 'Estado actualizado' });
+    } catch (error) {
+        res.status(500).json({ message: 'Error actualizando estado' });
+    }
+});
+
+app.delete('/api/team/:id', requireAdmin, async (req, res) => {
+    try {
+        await userService.removeTeamMember(req.params.id, req.user.email);
+        res.json({ message: 'Miembro eliminado' });
+    } catch (error) {
+        res.status(500).json({ message: 'Error eliminando miembro' });
+    }
+});
+
+// 3. API SCHEDULES (Horarios)
+app.get('/api/bot/:id/schedules', requireAdmin, async (req, res) => {
+    try {
+        const schedules = await schedulerService.getSchedulesByBot(req.params.id);
+        res.json(schedules);
+    } catch (error) {
+        res.status(500).json({ message: 'Error obteniendo horarios' });
+    }
+});
+
+app.post('/api/schedules', requireAdmin, async (req, res) => {
+    const { botId, action, scheduledAt } = req.body;
+    try {
+        const schedule = await schedulerService.createSchedule(botId, action, scheduledAt, req.user.email);
+        res.json(schedule);
+    } catch (error) {
+        res.status(500).json({ message: 'Error creando horario' });
+    }
+});
+
+app.delete('/api/schedules/:id', requireAdmin, async (req, res) => {
+    try {
+        await schedulerService.cancelSchedule(req.params.id);
+        res.json({ message: 'Horario cancelado' });
+    } catch (error) {
+        res.status(500).json({ message: 'Error cancelando horario' });
+    }
+});
+
+// ==========================================
+// === FIN RUTAS FALTANTES ===
+// ==========================================
 // === INICIO SERVIDOR ===
 async function startServer() {
     try {
