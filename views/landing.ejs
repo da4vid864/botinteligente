@@ -97,11 +97,14 @@ a:hover {
     margin: 0 auto;
     padding: 0 20px;
 }
-
 .header-content {
     display: flex;
     justify-content: space-between;
     align-items: center;
+    position: relative;
+}
+.site-branding {
+    z-index: 1001;
 }
 
 .site-logo-container img {
@@ -110,13 +113,23 @@ a:hover {
     max-width: 180px;
 }
 
+.header-menu {
+    display: block;
+}
+.menu-item a {
+    font-weight: 500;
+    font-size: 15px;
+    color: var(--theme-palette-color-3);
+    padding: 0.5rem 0;
+    border-bottom: 2px solid transparent;
+    transition: all 0.3s ease;
+}
 .header-menu .menu {
     display: flex;
     list-style: none;
     gap: 2rem;
     align-items: center;
 }
-
 .menu-item a {
     font-weight: 500;
     font-size: 15px;
@@ -131,7 +144,17 @@ a:hover {
     color: var(--theme-palette-color-1);
     border-bottom-color: var(--theme-palette-color-1);
 }
-
+.menu-toggle {
+    display: none;
+    background: none;
+    border: none;
+    font-size: 24px;
+    color: var(--theme-palette-color-3);
+    cursor: pointer;
+    padding: 0.5rem;
+    z-index: 1001;
+    position: relative;
+}
 /* Hero Section */
 .hero-section {
     background: linear-gradient(135deg, var(--theme-palette-color-1) 0%, var(--theme-palette-color-2) 100%);
@@ -588,97 +611,104 @@ a:hover {
 }
 
 @media (max-width: 768px) {
-    .header-content {
-        flex-direction: column;
-        gap: 1rem;
-    }
-    
-    .header-menu .menu {
-        flex-direction: column;
-        gap: 0.5rem;
-        text-align: center;
-    }
-    
-    .hero-section {
-        padding: 60px 0 50px;
-    }
-    
-    .stats-section {
-        grid-template-columns: 1fr;
-        gap: 2rem;
-    }
-    
-    .stat-number {
-        font-size: 2.5rem;
-    }
-    
-    .features-section {
-        padding: 60px 0;
-    }
-    
-    .feature-grid {
-        grid-template-columns: 1fr;
-        gap: 1.5rem;
-    }
-    
-    .process-tabs {
-        flex-direction: column;
-        align-items: stretch;
-    }
-    
-    .process-tab {
-        justify-content: center;
-    }
-    
-    .process-panel {
-        padding: 2rem 1.5rem;
-    }
-    
-    .testimonial-grid {
-        grid-template-columns: 1fr;
-    }
-    
-    .btn {
-        width: 100%;
-        justify-content: center;
-    }
-}
-
-@media (max-width: 480px) {
-    .ct-container {
-        padding: 0 15px;
+    #header {
+        padding: 0.75rem 0;
     }
     
     .site-logo-container img {
         height: 40px;
+        max-width: 150px;
     }
     
-    .hero-content h1 {
-        font-size: 1.75rem;
+    .menu-toggle {
+        display: block;
     }
     
-    .hero-content h2 {
-        font-size: 1.25rem;
+    .header-menu {
+        display: none;
+        position: fixed;
+        top: 0;
+        right: 0;
+        width: 280px;
+        height: 100vh;
+        background: var(--theme-palette-color-8);
+        z-index: 1000;
+        padding: 80px 0 20px;
+        overflow-y: auto;
+        box-shadow: -5px 0 15px rgba(0,0,0,0.1);
     }
     
-    .hero-content p {
-        font-size: 1rem;
+    .header-menu.active {
+        display: block;
+        animation: slideInRight 0.3s ease;
     }
     
-    .feature-card {
-        padding: 1.5rem;
+    .header-menu .menu {
+        flex-direction: column;
+        gap: 0;
+        align-items: stretch;
+        padding: 0;
     }
     
-    .faq-question {
-        padding: 1rem 1.5rem;
-        font-size: 15px;
+    .menu-item {
+        border-bottom: 1px solid var(--theme-palette-color-5);
     }
     
-    .faq-answer {
-        padding: 0 1.5rem 1rem 1.5rem;
+    .menu-item:last-child {
+        border-bottom: none;
+    }
+    
+    .menu-item a {
+        display: block;
+        padding: 1.25rem 2rem;
+        font-size: 16px;
+        border-bottom: none;
+    }
+    
+    .menu-item a:hover,
+    .current-menu-item a {
+        background: var(--theme-palette-color-7);
+        border-bottom: none;
+    }
+    
+    /* Overlay when menu is open */
+    .menu-overlay {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100vh;
+        background: rgba(0, 0, 0, 0.5);
+        z-index: 999;
+    }
+    
+    .menu-overlay.active {
+        display: block;
+        animation: fadeIn 0.3s ease;
+    }
+    
+    @keyframes slideInRight {
+        from {
+            transform: translateX(100%);
+        }
+        to {
+            transform: translateX(0);
+        }
+    }
+    
+    @keyframes fadeIn {
+        from {
+            opacity: 0;
+        }
+        to {
+            opacity: 1;
+        }
     }
 }
-
+    .header-menu {
+        width: 100%;
+    }
 /* Animations */
 @keyframes slideInUp {
     from {
@@ -1138,7 +1168,65 @@ a:hover {
 // FAQ Toggle Functionality
 document.addEventListener('DOMContentLoaded', function() {
     const faqQuestions = document.querySelectorAll('.faq-question');
+    // Create mobile menu elements
+    const headerContent = document.querySelector('.header-content');
+    const headerMenu = document.querySelector('.header-menu');
     
+    // Create menu toggle button
+    const menuToggle = document.createElement('button');
+    menuToggle.className = 'menu-toggle';
+    menuToggle.innerHTML = '<i class="fas fa-bars"></i>';
+    menuToggle.setAttribute('aria-label', 'Abrir menú');
+    menuToggle.setAttribute('aria-expanded', 'false');
+
+    // Create overlay
+    const menuOverlay = document.createElement('div');
+    menuOverlay.className = 'menu-overlay';
+    
+    // Insert toggle button and overlay
+    if (headerMenu) {
+        headerContent.appendChild(menuToggle);
+        document.body.appendChild(menuOverlay);
+        
+        // Toggle menu on button click
+        menuToggle.addEventListener('click', function() {
+            const isActive = headerMenu.classList.contains('active');
+            
+            if (isActive) {
+                headerMenu.classList.remove('active');
+                menuOverlay.classList.remove('active');
+                menuToggle.innerHTML = '<i class="fas fa-bars"></i>';
+                menuToggle.setAttribute('aria-expanded', 'false');
+                document.body.style.overflow = '';
+            } else {
+                headerMenu.classList.add('active');
+                menuOverlay.classList.add('active');
+                menuToggle.innerHTML = '<i class="fas fa-times"></i>';
+                menuToggle.setAttribute('aria-expanded', 'true');
+                document.body.style.overflow = 'hidden';
+            }
+        });
+        
+        // Close menu when clicking overlay
+        menuOverlay.addEventListener('click', function() {
+            headerMenu.classList.remove('active');
+            menuOverlay.classList.remove('active');
+            menuToggle.innerHTML = '<i class="fas fa-bars"></i>';
+            menuToggle.setAttribute('aria-expanded', 'false');
+            document.body.style.overflow = '';
+        });
+        
+        // Close menu when clicking on a menu item
+        document.querySelectorAll('.menu-item a').forEach(link => {
+            link.addEventListener('click', function() {
+                headerMenu.classList.remove('active');
+                menuOverlay.classList.remove('active');
+                menuToggle.innerHTML = '<i class="fas fa-bars"></i>';
+                menuToggle.setAttribute('aria-expanded', 'false');
+                document.body.style.overflow = '';
+            });
+        });
+    }
     faqQuestions.forEach(question => {
         question.addEventListener('click', function() {
             const answer = this.nextElementSibling;
