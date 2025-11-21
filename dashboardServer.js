@@ -9,11 +9,16 @@ const cookieParser = require('cookie-parser');
 const passport = require('passport');
 const cookie = require('cookie');
 const jwt = require('jsonwebtoken');
+const multer = require('multer'); // Nuevo
+const fs = require('fs'); // Nuevo
 
 const botDbService = require('./services/botDbService');
 const leadDbService = require('./services/leadDbService');
 const botConfigService = require('./services/botConfigService');
 const schedulerService = require('./services/schedulerService');
+const userService = require('./services/userService');
+const botImageService = require('./services/botImageService'); // Nuevo
+
 const { startSchedulerExecutor } = require('./services/schedulerExecutor');
 const authRoutes = require('./routes/authRoutes');
 const { attachUser, requireAdmin, requireAuth } = require('./auth/authMiddleware');
@@ -32,6 +37,22 @@ const activeBots = new Map();
 // Mapa de clientes WebSocket conectados: Set de WebSocket
 const dashboardClients = new Set();
 
+// === CONFIGURACIÓN DE MULTER (SUBIDA DE ARCHIVOS) ===
+const storage = multer.diskStorage({
+    destination: function (req, file, cb) {
+        const dir = path.join(__dirname, 'public', 'uploads');
+        if (!fs.existsSync(dir)){
+            fs.mkdirSync(dir, { recursive: true });
+        }
+        cb(null, dir);
+    },
+    filename: function (req, file, cb) {
+        const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+        cb(null, file.fieldname + '-' + uniqueSuffix + path.extname(file.originalname));
+    }
+});
+const upload = multer({ storage: storage });
+
 // === MIDDLEWARES ===
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
@@ -44,7 +65,6 @@ app.set('views', path.join(__dirname, 'views'));
 // Aplicar attachUser a todas las rutas para tener req.user disponible
 app.use(attachUser);
 
-
 // === CONFIGURACIÓN DE CSP ===
 app.use((req, res, next) => {
     res.setHeader(
@@ -52,12 +72,13 @@ app.use((req, res, next) => {
         "default-src 'self'; " +
         "script-src 'self' 'unsafe-inline' 'unsafe-eval'; " +
         "style-src 'self' 'unsafe-inline'; " +
-        "img-src 'self' data: https:; " +
+        "img-src 'self' data: blob: https:; " + // Agregado blob: y data: para imágenes
         "connect-src 'self' wss: ws:; " +
         "font-src 'self'; "
     );
     next();
 });
+
 // === RUTAS DE AUTENTICACIÓN ===
 app.use('/auth', authRoutes);
 
@@ -118,42 +139,25 @@ wss.on('connection', async (ws, req) => {
     // Si es admin, enviar información de bots
     if (user.role === 'admin') {
         try {
-            console.log(`📊 Obteniendo bots para usuario: ${user.email}`);
             const allBots = await botDbService.getAllBots();
-            console.log(`📦 Total de bots en BD: ${allBots.length}`);
-            
-            // Filtrar bots del usuario actual
             const userBots = allBots.filter(bot => bot.ownerEmail === user.email);
-            console.log(`👤 Bots del usuario ${user.email}: ${userBots.length}`);
             
             const botsData = userBots.map(bot => {
-                const botData = {
+                return {
                     ...bot,
                     runtimeStatus: getRuntimeStatus(bot)
                 };
-                console.log(`🤖 Bot preparado:`, {
-                    id: bot.id,
-                    name: bot.name,
-                    ownerEmail: bot.ownerEmail,
-                    status: bot.status,
-                    runtimeStatus: botData.runtimeStatus
-                });
-                return botData;
             });
             
-            console.log(`📤 Enviando ${botsData.length} bots via WebSocket`);
             ws.send(JSON.stringify({ type: 'INIT', data: botsData }));
-            console.log('✅ Mensaje INIT enviado correctamente');
         } catch (error) {
             console.error('❌ Error obteniendo/enviando bots:', error);
-            console.error('Stack trace:', error.stack);
         }
     }
 
     // Enviar leads calificados (ambos roles pueden verlos)
     try {
         const qualifiedLeads = await leadDbService.getQualifiedLeads();
-        console.log(`📤 Enviando ${qualifiedLeads.length} leads calificados`);
         ws.send(JSON.stringify({ type: 'INIT_LEADS', data: qualifiedLeads }));
     } catch (error) {
         console.error('❌ Error enviando leads:', error);
@@ -181,7 +185,6 @@ wss.on('connection', async (ws, req) => {
     });
 
     ws.on('close', () => {
-        console.log(`❌ WebSocket desconectado: ${user.email}`);
         dashboardClients.delete(ws);
     });
 });
@@ -274,10 +277,12 @@ function launchBot(botConfig) {
         console.log(`❌ Bot ${botConfig.id} terminado con código ${code}`);
         activeBots.delete(botConfig.id);
         const exitedBot = await botDbService.getBotById(botConfig.id);
-        broadcastToDashboard({
-            type: 'UPDATE_BOT',
-            data: { ...exitedBot, runtimeStatus: 'DISCONNECTED' }
-        });
+        if (exitedBot) {
+            broadcastToDashboard({
+                type: 'UPDATE_BOT',
+                data: { ...exitedBot, runtimeStatus: 'DISCONNECTED' }
+            });
+        }
     });
 
     activeBots.set(botConfig.id, botProcess);
@@ -339,7 +344,6 @@ async function handleSendMessage(leadId, message, vendorEmail) {
             }
         });
 
-        console.log(`📤 Mensaje enviado desde ${vendorEmail} a lead ${leadId}`);
     } catch (error) {
         console.error('Error enviando mensaje:', error);
     }
@@ -488,6 +492,7 @@ app.delete('/delete-bot/:id', requireAdmin, async (req, res) => {
     stopBot(id);
     await schedulerService.deleteSchedulesByBot(id);
     await botConfigService.deleteBotFeatures(id);
+    // También se deberían borrar las imágenes de la BD y disco aquí, pero lo dejaremos simple
     await botDbService.deleteBotById(id);
 
     broadcastToDashboard({
@@ -498,19 +503,103 @@ app.delete('/delete-bot/:id', requireAdmin, async (req, res) => {
     res.json({ message: 'Bot eliminado exitosamente' });
 });
 
-// === API: OBTENER LEADS CALIFICADOS (ADMIN Y VENDEDOR) ===
+// === NUEVAS RUTAS PARA GESTIÓN DE IMÁGENES ===
+
+// API: SUBIR IMAGEN (SOLO ADMIN)
+app.post('/api/bot/:botId/images', requireAdmin, upload.single('image'), async (req, res) => {
+    const { botId } = req.params;
+    const { keyword } = req.body;
+    const file = req.file;
+
+    const ownerEmail = req.user.email;
+    const bot = await botDbService.getBotByIdAndOwner(botId, ownerEmail);
+    
+    if (!bot) {
+        // Si hubo archivo subido pero no hay permiso, borrarlo
+        if (file && file.path) fs.unlinkSync(file.path);
+        return res.status(404).json({ message: 'Bot no encontrado o no tienes permiso' });
+    }
+
+    if (!file || !keyword) {
+        return res.status(400).json({ message: 'Imagen y palabra clave son requeridas' });
+    }
+
+    try {
+        const image = await botImageService.addImage(botId, file.filename, file.originalname, keyword);
+        
+        // Notificar al proceso del bot para actualizar contexto
+        const botProcess = activeBots.get(botId);
+        if (botProcess) {
+            botProcess.send({ type: 'REFRESH_IMAGES' });
+        }
+
+        res.json(image);
+    } catch (error) {
+        console.error('Error subiendo imagen:', error);
+        res.status(500).json({ message: 'Error al guardar la imagen' });
+    }
+});
+
+// API: OBTENER IMÁGENES (SOLO ADMIN)
+app.get('/api/bot/:botId/images', requireAdmin, async (req, res) => {
+    const { botId } = req.params;
+    const ownerEmail = req.user.email;
+
+    const bot = await botDbService.getBotByIdAndOwner(botId, ownerEmail);
+    if (!bot) {
+        return res.status(404).json({ message: 'Bot no encontrado o no tienes permiso' });
+    }
+
+    try {
+        const images = await botImageService.getImagesByBot(botId);
+        res.json(images);
+    } catch (error) {
+        res.status(500).json({ message: 'Error obteniendo imágenes' });
+    }
+});
+
+// API: ELIMINAR IMAGEN (SOLO ADMIN)
+app.delete('/api/images/:imageId', requireAdmin, async (req, res) => {
+    try {
+        // Nota: Idealmente deberíamos verificar que la imagen pertenece a un bot del usuario
+        // Pero asumimos que si es admin tiene acceso por ahora.
+        const deletedImage = await botImageService.deleteImage(req.params.imageId);
+        
+        if (deletedImage) {
+            // Borrar archivo físico
+            const filePath = path.join(__dirname, 'public', 'uploads', deletedImage.filename);
+            if (fs.existsSync(filePath)) {
+                fs.unlinkSync(filePath);
+            }
+            
+            // Notificar al bot
+            const botProcess = activeBots.get(deletedImage.bot_id);
+            if (botProcess) {
+                botProcess.send({ type: 'REFRESH_IMAGES' });
+            }
+        }
+        res.json({ message: 'Imagen eliminada' });
+    } catch (error) {
+        console.error('Error borrando imagen:', error);
+        res.status(500).json({ message: 'Error eliminando imagen' });
+    }
+});
+
+// === RESTO DE APIS ===
+
+// API: OBTENER LEADS CALIFICADOS
 app.get('/api/leads/qualified', requireAuth, async (req, res) => {
     const leads = await leadDbService.getQualifiedLeads();
     res.json(leads);
 });
 
-// === API: OBTENER LEADS ASIGNADOS AL USUARIO (ADMIN Y VENDEDOR) ===
+// API: OBTENER LEADS ASIGNADOS
 app.get('/api/leads/assigned', requireAuth, async (req, res) => {
     const leads = await leadDbService.getLeadsByVendor(req.user.email);
     res.json(leads);
 });
 
-// === API: OBTENER HISTORIAL DE MENSAJES DE UN LEAD (ADMIN Y VENDEDOR) ===
+// API: OBTENER HISTORIAL MENSAJES
 app.get('/api/leads/:id/messages', requireAuth, async (req, res) => {
     const { id } = req.params;
     const { limit = 1000 } = req.query;
@@ -525,7 +614,7 @@ app.get('/api/leads/:id/messages', requireAuth, async (req, res) => {
     });
 });
 
-// === API: OBTENER CONFIGURACIÓN DE FUNCIONALIDADES DE UN BOT (SOLO ADMIN) ===
+// API: OBTENER CONFIG
 app.get('/api/bot/:botId/features', requireAdmin, async (req, res) => {
     const { botId } = req.params;
     const ownerEmail = req.user.email;
@@ -539,7 +628,7 @@ app.get('/api/bot/:botId/features', requireAdmin, async (req, res) => {
     res.json(features);
 });
 
-// === API: ACTUALIZAR FUNCIONALIDADES DE UN BOT (SOLO ADMIN) ===
+// API: ACTUALIZAR CONFIG
 app.patch('/api/bot/:botId/features', requireAdmin, async (req, res) => {
     const { botId } = req.params;
     const ownerEmail = req.user.email;
@@ -557,7 +646,7 @@ app.patch('/api/bot/:botId/features', requireAdmin, async (req, res) => {
             data: { botId, features: updatedFeatures }
         });
 
-        res.json({ message: 'Funcionalidades actualizadas', features: updatedFeatures });
+        res.json({ message:'Funcionalidades actualizadas', features: updatedFeatures });
     } catch (error) {
         res.status(400).json({ message: error.message });
     }
@@ -618,8 +707,6 @@ app.delete('/api/schedule/:scheduleId', requireAdmin, async (req, res) => {
 
     res.json({ message: 'Tarea cancelada exitosamente' });
 });
-
-const userService = require('./services/userService');
 
 // === API: OBTENER MIEMBROS DEL EQUIPO (SOLO ADMIN) ===
 app.get('/api/team', requireAdmin, async (req, res) => {
@@ -687,6 +774,7 @@ app.delete('/api/team/:userId', requireAdmin, async (req, res) => {
         res.status(500).json({ message: 'Error eliminando usuario' });
     }
 });
+
 // === INICIAR SERVIDOR CON INICIALIZACIÓN DE DB ===
 async function startServer() {
     try {

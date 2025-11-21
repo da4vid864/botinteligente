@@ -100,6 +100,19 @@ async function initializeDatabase() {
         `);
         console.log('✅ Tabla schedules inicializada');
 
+        // 7. Tabla de imágenes del bot (NUEVO)
+        await pool.query(`
+            CREATE TABLE IF NOT EXISTS bot_images (
+                id SERIAL PRIMARY KEY,
+                bot_id TEXT NOT NULL,
+                filename TEXT NOT NULL,
+                original_name TEXT NOT NULL,
+                keyword TEXT NOT NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            );
+        `);
+        console.log('✅ Tabla bot_images inicializada');
+
         console.log('✅ Base de datos inicializada correctamente');
         return true;
     } catch (error) {

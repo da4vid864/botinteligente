@@ -6,78 +6,139 @@
   <title>Panel de Control - WhatsApp Bots</title>
   <link rel="stylesheet" href="/style.css">
   <style>
-.team-member-card {
-  background: var(--bg-color);
-  border: 1px solid var(--border-color);
-  border-radius: 8px;
-  padding: 1rem;
-  margin-bottom: 0.5rem;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
+    .team-member-card {
+      background: var(--bg-color);
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      padding: 1rem;
+      margin-bottom: 0.5rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
 
-.team-member-info {
-  flex: 1;
-}
+    .team-member-info {
+      flex: 1;
+    }
 
-.team-member-email {
-  font-weight: 600;
-  margin-bottom: 0.25rem;
-}
+    .team-member-email {
+      font-weight: 600;
+      margin-bottom: 0.25rem;
+    }
 
-.team-member-meta {
-  font-size: 0.85rem;
-  color: #888;
-}
+    .team-member-meta {
+      font-size: 0.85rem;
+      color: #888;
+    }
 
-.team-member-actions {
-  display: flex;
-  gap: 0.5rem;
-}
+    .team-member-actions {
+      display: flex;
+      gap: 0.5rem;
+    }
 
-.badge {
-  display: inline-block;
-  padding: 0.25rem 0.5rem;
-  border-radius: 4px;
-  font-size: 0.75rem;
-  font-weight: 600;
-}
+    .badge {
+      display: inline-block;
+      padding: 0.25rem 0.5rem;
+      border-radius: 4px;
+      font-size: 0.75rem;
+      font-weight: 600;
+    }
 
-.badge-admin {
-  background-color: rgba(255, 193, 7, 0.2);
-  color: var(--status-pending);
-}
+    .badge-admin {
+      background-color: rgba(255, 193, 7, 0.2);
+      color: var(--status-pending);
+    }
 
-.badge-vendor {
-  background-color: rgba(13, 110, 253, 0.2);
-  color: #0d6efd;
-}
+    .badge-vendor {
+      background-color: rgba(13, 110, 253, 0.2);
+      color: #0d6efd;
+    }
 
-.badge-inactive {
-  background-color: rgba(220, 53, 69, 0.2);
-  color: #dc3545;
-}
-</style>
+    .badge-inactive {
+      background-color: rgba(220, 53, 69, 0.2);
+      color: #dc3545;
+    }
+
+    /* Estilos para Tabs del Modal */
+    .modal-tabs {
+        display: flex;
+        gap: 1rem;
+        border-bottom: 1px solid var(--border-color);
+        margin-bottom: 1.5rem;
+    }
+
+    .modal-tab {
+        background: none;
+        border: none;
+        color: #888;
+        padding: 0.5rem 1rem;
+        cursor: pointer;
+        font-weight: 500;
+        border-bottom: 2px solid transparent;
+        transition: all 0.2s;
+    }
+
+    .modal-tab:hover {
+        color: var(--text-color);
+    }
+
+    .modal-tab.active {
+        color: var(--primary-color);
+        border-bottom-color: var(--primary-color);
+    }
+
+    .upload-section {
+        background: rgba(255, 255, 255, 0.05);
+        padding: 1rem;
+        border-radius: 8px;
+        margin-bottom: 1rem;
+        border: 1px solid var(--border-color);
+    }
+
+    .image-item {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        background: var(--bg-color);
+        padding: 0.75rem;
+        margin-bottom: 0.5rem;
+        border-radius: 6px;
+        border: 1px solid var(--border-color);
+    }
+
+    .image-preview {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+    }
+
+    .image-thumb {
+        width: 40px;
+        height: 40px;
+        object-fit: cover;
+        border-radius: 4px;
+        background: #000;
+    }
+  </style>
 </head>
 
 <body>
   <div class="container">
-<header>
-  <h1>🤖 Gestor de Bots de WhatsApp</h1>
-  <div class="user-info">
-    <img src="<%= user.picture %>" alt="User" class="user-avatar">
-    <span><%= user.displayName %></span>
-    
-    <!-- Mostrar rol -->
-    <span style="background: #28a745; padding: 4px 8px; border-radius: 4px; font-size: 12px; margin-left: 8px;">
-      <%= user.role === 'admin' ? '👑 Admin' : '👤 Vendedor' %>
-    </span>
-    
-    <a href="/sales" class="btn" style="background-color: var(--status-connected);">💼 Panel de Ventas</a>
-    <a href="/auth/logout" class="btn btn-secondary">Cerrar Sesión</a>
-  </div>
-</header>
+    <header>
+      <h1>🤖 Gestor de Bots de WhatsApp</h1>
+      <div class="user-info">
+        <img src="<%= user.picture %>" alt="User" class="user-avatar">
+        <span><%= user.displayName %></span>
+        
+        <!-- Mostrar rol -->
+        <span style="background: #28a745; padding: 4px 8px; border-radius: 4px; font-size: 12px; margin-left: 8px;">
+          <%= user.role === 'admin' ? '👑 Admin' : '👤 Vendedor' %>
+        </span>
+        
+        <a href="/sales" class="btn" style="background-color: var(--status-connected);">💼 Panel de Ventas</a>
+        <a href="/auth/logout" class="btn btn-secondary">Cerrar Sesión</a>
+      </div>
+    </header>
 
     <main>
         <div id="bots-container"></div>
@@ -143,103 +204,132 @@
   <div id="settings-modal-backdrop" class="settings-modal-backdrop">
     <div id="settings-modal" class="settings-modal">
       <h2>⚙️ Configuración del Bot</h2>
-      <p style="color: #888; margin-bottom: 1.5rem;">Bot ID: <strong id="settings-bot-id"></strong></p>
+      <p style="color: #888; margin-bottom: 1rem;">Bot ID: <strong id="settings-bot-id"></strong></p>
 
-      <div class="settings-section">
-        <h3>🎯 Funcionalidades Principales</h3>
-        
-        <div class="setting-item">
-          <div class="setting-info">
-            <div class="setting-title">⏰ Agendamiento</div>
-            <div class="setting-description">Programar habilitación/deshabilitación del bot</div>
-          </div>
-          <label class="toggle-switch">
-            <input type="checkbox" id="feature-scheduling">
-            <span class="toggle-slider"></span>
-          </label>
-        </div>
-
-        <div class="setting-item">
-          <div class="setting-info">
-            <div class="setting-title">
-              🤖 Respuestas Automáticas
-              <span class="feature-badge coming-soon">Próximamente</span>
-            </div>
-            <div class="setting-description">El bot responde automáticamente a los mensajes</div>
-          </div>
-          <label class="toggle-switch">
-            <input type="checkbox" id="feature-autoresponse" disabled>
-            <span class="toggle-slider"></span>
-          </label>
-        </div>
-
-        <div class="setting-item">
-          <div class="setting-info">
-            <div class="setting-title">
-              📋 Captura de Leads
-              <span class="feature-badge coming-soon">Próximamente</span>
-            </div>
-            <div class="setting-description">Extrae automáticamente información de contacto</div>
-          </div>
-          <label class="toggle-switch">
-            <input type="checkbox" id="feature-leadcapture" disabled>
-            <span class="toggle-slider"></span>
-          </label>
-        </div>
-
-        <div class="setting-item">
-          <div class="setting-info">
-            <div class="setting-title">
-              🕐 Horario de Trabajo
-              <span class="feature-badge coming-soon">Próximamente</span>
-            </div>
-            <div class="setting-description">Bot activo solo en horarios específicos</div>
-          </div>
-          <label class="toggle-switch">
-            <input type="checkbox" id="feature-workinghours" disabled>
-            <span class="toggle-slider"></span>
-          </label>
-        </div>
+      <!-- TABS -->
+      <div class="modal-tabs">
+          <button class="modal-tab active" onclick="switchSettingsTab('features')">Funcionalidades</button>
+          <button class="modal-tab" onclick="switchSettingsTab('images')">Imágenes</button>
       </div>
 
-      <div class="settings-actions">
+      <!-- TAB: FUNCIONALIDADES -->
+      <div id="tab-features">
+          <div class="settings-section">
+            <div class="setting-item">
+              <div class="setting-info">
+                <div class="setting-title">⏰ Agendamiento</div>
+                <div class="setting-description">Programar habilitación/deshabilitación del bot</div>
+              </div>
+              <label class="toggle-switch">
+                <input type="checkbox" id="feature-scheduling">
+                <span class="toggle-slider"></span>
+              </label>
+            </div>
+
+            <div class="setting-item">
+              <div class="setting-info">
+                <div class="setting-title">
+                  🤖 Respuestas Automáticas
+                </div>
+                <div class="setting-description">El bot responde automáticamente a los mensajes</div>
+              </div>
+              <label class="toggle-switch">
+                <input type="checkbox" id="feature-autoresponse">
+                <span class="toggle-slider"></span>
+              </label>
+            </div>
+
+            <div class="setting-item">
+              <div class="setting-info">
+                <div class="setting-title">
+                  📋 Captura de Leads
+                </div>
+                <div class="setting-description">Extrae automáticamente información de contacto</div>
+              </div>
+              <label class="toggle-switch">
+                <input type="checkbox" id="feature-leadcapture">
+                <span class="toggle-slider"></span>
+              </label>
+            </div>
+
+            <div class="setting-item">
+              <div class="setting-info">
+                <div class="setting-title">
+                  🕐 Horario de Trabajo
+                </div>
+                <div class="setting-description">Bot activo solo en horarios específicos</div>
+              </div>
+              <label class="toggle-switch">
+                <input type="checkbox" id="feature-workinghours">
+                <span class="toggle-slider"></span>
+              </label>
+            </div>
+          </div>
+      </div>
+
+      <!-- TAB: IMÁGENES -->
+      <div id="tab-images" style="display: none;">
+          <div class="upload-section">
+              <h4 style="margin-top:0; margin-bottom: 10px;">Subir Nueva Imagen</h4>
+              <form id="upload-image-form" style="display: flex; gap: 1rem; flex-direction: column;">
+                  <div class="form-group" style="margin:0;">
+                      <label style="font-size: 0.85rem; color: #aaa;">Palabra clave (ej: menu, ubicacion)</label>
+                      <input type="text" id="img-keyword" placeholder="Palabra clave" required style="width: 100%; padding: 8px; background: #333; border: 1px solid #555; color: #fff; border-radius: 4px;">
+                  </div>
+                  <div class="form-group" style="margin:0;">
+                      <label style="font-size: 0.85rem; color: #aaa;">Archivo de Imagen</label>
+                      <input type="file" id="img-file" accept="image/*" required style="color: #ccc;">
+                  </div>
+                  <button type="submit" class="btn btn-small">⬆️ Subir y Guardar</button>
+              </form>
+          </div>
+          
+          <h4 style="margin-bottom: 10px;">Imágenes Activas</h4>
+          <div id="images-list" style="max-height: 250px; overflow-y: auto; padding-right: 5px;">
+              <!-- Lista de imágenes -->
+          </div>
+      </div>
+
+      <div class="settings-actions" style="margin-top: 1.5rem;">
         <button type="button" id="settings-cancel-btn" class="btn btn-secondary">Cerrar</button>
-        <button type="button" id="settings-save-btn" class="btn">Guardar Cambios</button>
+        <button type="button" id="settings-save-btn" class="btn">Guardar Cambios (Funcionalidades)</button>
       </div>
     </div>
   </div>
+
+  <!-- Modal de Equipo -->
   <div id="team-modal-backdrop" class="modal-backdrop">
-  <div id="team-modal" class="modal" style="max-width: 800px;">
-    <h2>👥 Gestión de Equipo</h2>
-    
-    <div style="margin-bottom: 2rem;">
-      <h3>Agregar Nuevo Miembro</h3>
-      <form id="add-team-member-form" style="display: flex; gap: 1rem; align-items: end;">
-        <div class="form-group" style="flex: 1;">
-          <label for="member-email">Email</label>
-          <input type="email" id="member-email" placeholder="usuario@ejemplo.com" required>
-        </div>
-        <div class="form-group" style="width: 150px;">
-          <label for="member-role">Rol</label>
-          <select id="member-role" required>
-            <option value="vendor">Vendedor</option>
-            <option value="admin">Admin</option>
-          </select>
-        </div>
-        <button type="submit" class="btn">Agregar</button>
-      </form>
-    </div>
+    <div id="team-modal" class="modal" style="max-width: 800px;">
+      <h2>👥 Gestión de Equipo</h2>
+      
+      <div style="margin-bottom: 2rem;">
+        <h3>Agregar Nuevo Miembro</h3>
+        <form id="add-team-member-form" style="display: flex; gap: 1rem; align-items: end;">
+          <div class="form-group" style="flex: 1;">
+            <label for="member-email">Email</label>
+            <input type="email" id="member-email" placeholder="usuario@ejemplo.com" required>
+          </div>
+          <div class="form-group" style="width: 150px;">
+            <label for="member-role">Rol</label>
+            <select id="member-role" required>
+              <option value="vendor">Vendedor</option>
+              <option value="admin">Admin</option>
+            </select>
+          </div>
+          <button type="submit" class="btn">Agregar</button>
+        </form>
+      </div>
 
-    <div>
-      <h3>Miembros del Equipo</h3>
-      <div id="team-members-list"></div>
-    </div>
+      <div>
+        <h3>Miembros del Equipo</h3>
+        <div id="team-members-list"></div>
+      </div>
 
-    <div class="form-actions" style="margin-top: 2rem;">
-      <button type="button" id="team-close-btn" class="btn btn-secondary">Cerrar</button>
+      <div class="form-actions" style="margin-top: 2rem;">
+        <button type="button" id="team-close-btn" class="btn btn-secondary">Cerrar</button>
+      </div>
     </div>
   </div>
-</div>
 
   <script>
     const currentUserEmail = '<%= user.email %>';
@@ -294,6 +384,9 @@
         currentSettingsBotId = botId;
         settingsBotIdDisplay.textContent = botId;
         
+        // Resetear tabs
+        switchSettingsTab('features');
+        
         try {
             const response = await fetch(`/api/bot/${botId}/features`);
             const features = await response.json();
@@ -305,9 +398,110 @@
             
             settingsModalBackdrop.style.display = 'flex';
         } catch (error) {
+            console.error(error);
             alert('Error cargando configuración');
         }
     }
+
+    // --- NUEVO: Lógica de Tabs y Gestión de Imágenes ---
+
+    function switchSettingsTab(tab) {
+        // Actualizar botones
+        document.querySelectorAll('.modal-tab').forEach(t => t.classList.remove('active'));
+        const activeButton = Array.from(document.querySelectorAll('.modal-tab')).find(b => b.getAttribute('onclick').includes(tab));
+        if(activeButton) activeButton.classList.add('active');
+        
+        // Mostrar contenido
+        if (tab === 'features') {
+            document.getElementById('tab-features').style.display = 'block';
+            document.getElementById('tab-images').style.display = 'none';
+            settingsSaveBtn.style.display = 'block';
+        } else {
+            document.getElementById('tab-features').style.display = 'none';
+            document.getElementById('tab-images').style.display = 'block';
+            settingsSaveBtn.style.display = 'none'; // Ocultar botón guardar general, ya que las imágenes se suben individualmente
+            loadBotImages(currentSettingsBotId);
+        }
+    }
+
+    async function loadBotImages(botId) {
+        const container = document.getElementById('images-list');
+        container.innerHTML = '<p style="color:#888; text-align:center;">Cargando imágenes...</p>';
+        
+        try {
+            const res = await fetch(`/api/bot/${botId}/images`);
+            const images = await res.json();
+            
+            if (images.length === 0) {
+                container.innerHTML = '<p style="color: #888; text-align:center; padding: 1rem;">No hay imágenes configuradas.</p>';
+                return;
+            }
+            
+            container.innerHTML = images.map(img => `
+                <div class="image-item">
+                    <div class="image-preview">
+                        <img src="/uploads/${img.filename}" class="image-thumb" alt="thumb">
+                        <div>
+                            <div style="font-weight: bold; color: #fff;">${img.keyword}</div>
+                            <div style="font-size: 0.8rem; color: #aaa;">${img.original_name}</div>
+                        </div>
+                    </div>
+                    <button onclick="deleteImage(${img.id})" class="btn btn-small btn-danger" title="Eliminar">🗑️</button>
+                </div>
+            `).join('');
+        } catch (err) {
+            console.error(err);
+            container.innerHTML = '<p style="color:red;">Error cargando imágenes</p>';
+        }
+    }
+
+    // Subir imagen
+    document.getElementById('upload-image-form').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        
+        const submitBtn = e.target.querySelector('button[type="submit"]');
+        submitBtn.disabled = true;
+        submitBtn.textContent = 'Subiendo...';
+
+        const formData = new FormData();
+        formData.append('keyword', document.getElementById('img-keyword').value);
+        formData.append('image', document.getElementById('img-file').files[0]);
+
+        try {
+            const res = await fetch(`/api/bot/${currentSettingsBotId}/images`, {
+                method: 'POST',
+                body: formData
+            });
+            
+            if (res.ok) {
+                document.getElementById('upload-image-form').reset();
+                loadBotImages(currentSettingsBotId);
+            } else {
+                const err = await res.json();
+                alert('Error subiendo imagen: ' + (err.message || 'Desconocido'));
+            }
+        } catch (err) {
+            console.error(err);
+            alert('Error de conexión');
+        } finally {
+            submitBtn.disabled = false;
+            submitBtn.textContent = '⬆️ Subir y Guardar';
+        }
+    });
+
+    async function deleteImage(id) {
+        if(!confirm('¿Seguro que deseas eliminar esta imagen? El bot ya no podrá usarla.')) return;
+        
+        try {
+            await fetch(`/api/images/${id}`, { method: 'DELETE' });
+            loadBotImages(currentSettingsBotId);
+        } catch (error) {
+            console.error(error);
+            alert('No se pudo eliminar la imagen');
+        }
+    }
+
+    // --- Fin Lógica Imágenes ---
 
     async function saveBotFeatures() {
         const features = {
@@ -426,68 +620,34 @@
     
     socket.onmessage = (event) => {
         const message = JSON.parse(event.data);
-        console.log('📨 Mensaje WebSocket recibido:', message.type);
-        console.log('📦 Datos:', message.data);
         
         const handler = {
             'INIT': (data) => {
                 console.log(`🔄 Inicializando dashboard con ${data.length} bots`);
-                data.forEach((bot, index) => {
-                    console.log(`Bot ${index + 1}:`, bot);
-                    addOrUpdateBotCard(bot);
-                });
+                data.forEach((bot) => addOrUpdateBotCard(bot));
             },
-            'NEW_BOT': (data) => {
-                console.log('➕ Nuevo bot recibido:', data);
-                addOrUpdateBotCard(data);
-            },
-            'UPDATE_BOT': (data) => {
-                console.log('🔄 Actualización de bot:', data);
-                addOrUpdateBotCard(data);
-            },
+            'NEW_BOT': (data) => addOrUpdateBotCard(data),
+            'UPDATE_BOT': (data) => addOrUpdateBotCard(data),
             'BOT_DELETED': (data) => {
-                console.log('🗑️ Bot eliminado:', data.id);
                 const cardToRemove = botsContainer.querySelector(`.bot-card[data-bot-id="${data.id}"]`);
-                if (cardToRemove) {
-                    cardToRemove.remove();
-                    console.log('✅ Tarjeta eliminada del DOM');
-                }
+                if (cardToRemove) cardToRemove.remove();
             }
         }[message.type];
         
-        if (handler) {
-            handler(message.data);
-        } else {
-            console.warn('⚠️ Tipo de mensaje no manejado:', message.type);
-        }
+        if (handler) handler(message.data);
     };
     
-    socket.onerror = (error) => {
-        console.error('❌ Error en WebSocket:', error);
-    };
-    
-    socket.onclose = () => {
-        console.log('❌ WebSocket desconectado');
-    };
+    socket.onerror = (error) => console.error('❌ Error en WebSocket:', error);
+    socket.onclose = () => console.log('❌ WebSocket desconectado');
 
     function addOrUpdateBotCard(botData) {
-        console.log('🔧 Procesando bot:', botData.id);
-        console.log('   - ownerEmail:', botData.ownerEmail);
-        console.log('   - currentUserEmail:', currentUserEmail);
-        
-        if (botData.ownerEmail !== currentUserEmail) {
-            console.log('⚠️ Bot omitido (no pertenece al usuario actual)');
-            return;
-        }
+        if (botData.ownerEmail !== currentUserEmail) return;
 
         let card = botsContainer.querySelector(`.bot-card[data-bot-id="${botData.id}"]`);
         
-                if (!card) {
-            console.log('➕ Creando nueva tarjeta para bot:', botData.id);
+        if (!card) {
             card = botCardTemplate.content.cloneNode(true).firstElementChild;
             botsContainer.appendChild(card);
-        } else {
-            console.log('🔄 Actualizando tarjeta existente para bot:', botData.id);
         }
         
         card.dataset.botId = botData.id;
@@ -541,150 +701,134 @@
                 statusText.textContent = 'Iniciando...'; 
                 break;
         }
-        
-        console.log('✅ Tarjeta procesada exitosamente para bot:', botData.id);
     }
-    // views/dashboard.ejs - Dentro del <script> existente
 
-// === GESTIÓN DE EQUIPO ===
-const teamModalBackdrop = document.getElementById('team-modal-backdrop');
-const teamCloseBtn = document.getElementById('team-close-btn');
-const addTeamMemberForm = document.getElementById('add-team-member-form');
+    // === GESTIÓN DE EQUIPO ===
+    const teamModalBackdrop = document.getElementById('team-modal-backdrop');
+    const teamCloseBtn = document.getElementById('team-close-btn');
+    const addTeamMemberForm = document.getElementById('add-team-member-form');
 
-// Crear botón para abrir gestión de equipo en el header
-const teamManagementBtn = document.createElement('button');
-teamManagementBtn.className = 'btn';
-teamManagementBtn.style.cssText = 'background-color: #0d6efd; margin-left: 0.5rem;';
-teamManagementBtn.innerHTML = '👥 Gestionar Equipo';
-teamManagementBtn.addEventListener('click', openTeamManagement);
+    // Crear botón para abrir gestión de equipo en el header
+    const teamManagementBtn = document.createElement('button');
+    teamManagementBtn.className = 'btn';
+    teamManagementBtn.style.cssText = 'background-color: #0d6efd; margin-left: 0.5rem;';
+    teamManagementBtn.innerHTML = '👥 Gestionar Equipo';
+    teamManagementBtn.addEventListener('click', openTeamManagement);
 
-// Agregar el botón al header (después del botón de Panel de Ventas)
-const salesBtn = document.querySelector('a[href="/sales"]');
-if (salesBtn) {
-    salesBtn.parentNode.insertBefore(teamManagementBtn, salesBtn.nextSibling);
-}
-
-teamCloseBtn.addEventListener('click', () => teamModalBackdrop.style.display = 'none');
-teamModalBackdrop.addEventListener('click', (e) => {
-    if (e.target === teamModalBackdrop) teamModalBackdrop.style.display = 'none';
-});
-
-addTeamMemberForm.addEventListener('submit', async (e) => {
-    e.preventDefault();
-    
-    const email = document.getElementById('member-email').value;
-    const role = document.getElementById('member-role').value;
-    
-    try {
-        const response = await fetch('/api/team', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ email, role })
-        });
-        
-        const result = await response.json();
-        
-        if (response.ok) {
-            alert(`✅ Usuario ${email} agregado exitosamente`);
-            addTeamMemberForm.reset();
-            loadTeamMembers();
-        } else {
-            alert(`❌ Error: ${result.message}`);
-        }
-    } catch (error) {
-        alert('Error agregando usuario');
-        console.error(error);
+    // Agregar el botón al header (después del botón de Panel de Ventas)
+    const salesBtn = document.querySelector('a[href="/sales"]');
+    if (salesBtn) {
+        salesBtn.parentNode.insertBefore(teamManagementBtn, salesBtn.nextSibling);
     }
-});
 
-async function openTeamManagement() {
-    teamModalBackdrop.style.display = 'flex';
-    await loadTeamMembers();
-}
+    teamCloseBtn.addEventListener('click', () => teamModalBackdrop.style.display = 'none');
+    teamModalBackdrop.addEventListener('click', (e) => {
+        if (e.target === teamModalBackdrop) teamModalBackdrop.style.display = 'none';
+    });
 
-async function loadTeamMembers() {
-    try {
-        const response = await fetch('/api/team');
-        const members = await response.json();
+    addTeamMemberForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
         
-        const container = document.getElementById('team-members-list');
+        const email = document.getElementById('member-email').value;
+        const role = document.getElementById('member-role').value;
         
-        if (members.length === 0) {
-            container.innerHTML = '<p style="text-align: center; color: #666; padding: 2rem;">No hay miembros en el equipo</p>';
-            return;
+        try {
+            const response = await fetch('/api/team', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email, role })
+            });
+            
+            const result = await response.json();
+            
+            if (response.ok) {
+                alert(`✅ Usuario ${email} agregado exitosamente`);
+                addTeamMemberForm.reset();
+                loadTeamMembers();
+            } else {
+                alert(`❌ Error: ${result.message}`);
+            }
+        } catch (error) {
+            alert('Error agregando usuario');
+            console.error(error);
         }
-        
-        container.innerHTML = members.map(member => `
-            <div class="team-member-card">
-                <div class="team-member-info">
-                    <div class="team-member-email">${member.email}</div>
-                    <div class="team-member-meta">
-                        <span class="badge badge-${member.role}">${member.role === 'admin' ? '👑 Admin' : '👤 Vendedor'}</span>
-                        ${!member.is_active ? '<span class="badge badge-inactive">Inactivo</span>' : ''}
-                        <span style="margin-left: 0.5rem;">Agregado: ${new Date(member.created_at).toLocaleDateString()}</span>
-                        ${member.last_login ? `<span style="margin-left: 0.5rem;">Último login: ${new Date(member.last_login).toLocaleDateString()}</span>` : ''}
+    });
+
+    async function openTeamManagement() {
+        teamModalBackdrop.style.display = 'flex';
+        await loadTeamMembers();
+    }
+
+    async function loadTeamMembers() {
+        try {
+            const response = await fetch('/api/team');
+            const members = await response.json();
+            
+            const container = document.getElementById('team-members-list');
+            
+            if (members.length === 0) {
+                container.innerHTML = '<p style="text-align: center; color: #666; padding: 2rem;">No hay miembros en el equipo</p>';
+                return;
+            }
+            
+            container.innerHTML = members.map(member => `
+                <div class="team-member-card">
+                    <div class="team-member-info">
+                        <div class="team-member-email">${member.email}</div>
+                        <div class="team-member-meta">
+                            <span class="badge badge-${member.role}">${member.role === 'admin' ? '👑 Admin' : '👤 Vendedor'}</span>
+                            ${!member.is_active ? '<span class="badge badge-inactive">Inactivo</span>' : ''}
+                            <span style="margin-left: 0.5rem;">Agregado: ${new Date(member.created_at).toLocaleDateString()}</span>
+                        </div>
+                    </div>
+                    <div class="team-member-actions">
+                        <button class="btn btn-small ${member.is_active ? 'btn-secondary' : 'btn-success'}" 
+                                onclick="toggleMemberStatus(${member.id})">
+                            ${member.is_active ? '⏸️ Desactivar' : '▶️ Activar'}
+                        </button>
+                        <button class="btn btn-small btn-danger" 
+                                onclick="removeMember(${member.id}, '${member.email}')">
+                            🗑️ Eliminar
+                        </button>
                     </div>
                 </div>
-                <div class="team-member-actions">
-                    <button class="btn btn-small ${member.is_active ? 'btn-secondary' : 'btn-success'}" 
-                            onclick="toggleMemberStatus(${member.id})">
-                        ${member.is_active ? '⏸️ Desactivar' : '▶️ Activar'}
-                    </button>
-                    <button class="btn btn-small btn-danger" 
-                            onclick="removeMember(${member.id}, '${member.email}')">
-                        🗑️ Eliminar
-                    </button>
-                </div>
-            </div>
-        `).join('');
-    } catch (error) {
-        console.error('Error cargando equipo:', error);
-    }
-}
-
-async function toggleMemberStatus(userId) {
-    try {
-        const response = await fetch(`/api/team/${userId}/toggle`, {
-            method: 'PATCH'
-        });
-        
-        const result = await response.json();
-        
-        if (response.ok) {
-            alert(`✅ ${result.message}`);
-            await loadTeamMembers();
-        } else {
-            alert(`❌ Error: ${result.message}`);
+            `).join('');
+        } catch (error) {
+            console.error('Error cargando equipo:', error);
         }
-    } catch (error) {
-        alert('Error cambiando estado del usuario');
-        console.error(error);
     }
-}
 
-async function removeMember(userId, email) {
-    if (!confirm(`¿Seguro que quieres eliminar a ${email}?\nEsta acción es irreversible.`)) {
-        return;
-    }
-    
-    try {
-        const response = await fetch(`/api/team/${userId}`, {
-            method: 'DELETE'
-        });
-        
-        const result = await response.json();
-        
-        if (response.ok) {
-            alert('✅ Usuario eliminado exitosamente');
-            await loadTeamMembers();
-        } else {
-            alert(`❌ Error: ${result.message}`);
+    async function toggleMemberStatus(userId) {
+        try {
+            const response = await fetch(`/api/team/${userId}/toggle`, { method: 'PATCH' });
+            const result = await response.json();
+            if (response.ok) {
+                alert(`✅ ${result.message}`);
+                await loadTeamMembers();
+            } else {
+                alert(`❌ Error: ${result.message}`);
+            }
+        } catch (error) {
+            alert('Error cambiando estado del usuario');
         }
-    } catch (error) {
-        alert('Error eliminando usuario');
-        console.error(error);
     }
-}
-</script>
+
+    async function removeMember(userId, email) {
+        if (!confirm(`¿Seguro que quieres eliminar a ${email}?\nEsta acción es irreversible.`)) return;
+        
+        try {
+            const response = await fetch(`/api/team/${userId}`, { method: 'DELETE' });
+            if (response.ok) {
+                alert('✅ Usuario eliminado exitosamente');
+                await loadTeamMembers();
+            } else {
+                const result = await response.json();
+                alert(`❌ Error: ${result.message}`);
+            }
+        } catch (error) {
+            alert('Error eliminando usuario');
+        }
+    }
+  </script>
 </body>
 </html>
