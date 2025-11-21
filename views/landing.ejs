@@ -21,219 +21,703 @@
 <meta name="twitter:title" content="<%= pageTitle || 'Casos de éxito que hablan por sí solos - botinteligente.com.mx' %>">
 <meta name="twitter:description" content="<%= pageDescription || 'Confía en la inteligencia que vende por ti' %>">
 
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
 <style>
+/* Reset y Variables */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+:root {
+    --theme-palette-color-1: #2872fa;
+    --theme-palette-color-2: #1559ed;
+    --theme-palette-color-3: #3A4F66;
+    --theme-palette-color-4: #192a3d;
+    --theme-palette-color-5: #e1e8ed;
+    --theme-palette-color-6: #f2f5f7;
+    --theme-palette-color-7: #FAFBFC;
+    --theme-palette-color-8: #ffffff;
+    --theme-content-spacing: 1.5rem;
+}
+
 .lazyload,
 .lazyloading {
-max-width: 100%;
+    max-width: 100%;
+    opacity: 0;
 }
-</style>
 
-<!-- Global Styles -->
-<style>
-:root {
---wp--preset--color--palette-color-1: var(--theme-palette-color-1, #2872fa);
---wp--preset--color--palette-color-2: var(--theme-palette-color-2, #1559ed);
---wp--preset--color--palette-color-3: var(--theme-palette-color-3, #3A4F66);
---wp--preset--color--palette-color-4: var(--theme-palette-color-4, #192a3d);
---wp--preset--color--palette-color-5: var(--theme-palette-color-5, #e1e8ed);
---wp--preset--color--palette-color-6: var(--theme-palette-color-6, #f2f5f7);
---wp--preset--color--palette-color-7: var(--theme-palette-color-7, #FAFBFC);
---wp--preset--color--palette-color-8: var(--theme-palette-color-8, #ffffff);
+.lazyloaded {
+    opacity: 1;
+    transition: opacity 400ms;
 }
 
 body {
-margin: 0;
-padding: 0;
-font-family: 'Inter', sans-serif;
+    margin: 0;
+    padding: 0;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen-Sans, Ubuntu, Cantarell, sans-serif;
+    font-size: 16px;
+    line-height: 1.6;
+    color: var(--theme-palette-color-3);
+    background-color: var(--theme-palette-color-8);
 }
 
-.container {
-max-width: 1200px;
-margin: 0 auto;
-padding: 0 20px;
+a {
+    color: var(--theme-palette-color-1);
+    text-decoration: none;
+    transition: all 0.3s ease;
 }
 
-.btn {
-display: inline-block;
-padding: 12px 24px;
-background: var(--wp--preset--color--palette-color-1);
-color: white;
-text-decoration: none;
-border-radius: 6px;
-font-weight: 600;
-transition: all 0.3s ease;
-border: none;
-cursor: pointer;
+a:hover {
+    color: var(--theme-palette-color-2);
 }
 
-.btn:hover {
-background: var(--wp--preset--color--palette-color-2);
-transform: translateY(-2px);
+.skip-link {
+    position: absolute;
+    left: -9999px;
 }
 
-.btn-secondary {
-background: #6c757d;
+/* Header Styles */
+#header {
+    background: var(--theme-palette-color-8);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+    position: sticky;
+    top: 0;
+    z-index: 1000;
+    padding: 1rem 0;
 }
 
-.btn-secondary:hover {
-background: #5a6268;
+.ct-container {
+    max-width: 1240px;
+    margin: 0 auto;
+    padding: 0 20px;
+}
+
+.header-content {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.site-logo-container img {
+    height: 50px;
+    width: auto;
+    max-width: 180px;
+}
+
+.header-menu .menu {
+    display: flex;
+    list-style: none;
+    gap: 2rem;
+    align-items: center;
+}
+
+.menu-item a {
+    font-weight: 500;
+    font-size: 15px;
+    color: var(--theme-palette-color-3);
+    padding: 0.5rem 0;
+    border-bottom: 2px solid transparent;
+    transition: all 0.3s ease;
+}
+
+.menu-item a:hover,
+.current-menu-item a {
+    color: var(--theme-palette-color-1);
+    border-bottom-color: var(--theme-palette-color-1);
 }
 
 /* Hero Section */
 .hero-section {
-background: linear-gradient(135deg, var(--wp--preset--color--palette-color-1) 0%, var(--wp--preset--color--palette-color-2) 100%);
-color: white;
-padding: 80px 0;
-text-align: center;
+    background: linear-gradient(135deg, var(--theme-palette-color-1) 0%, var(--theme-palette-color-2) 100%);
+    color: var(--theme-palette-color-8);
+    padding: 100px 0 80px;
+    position: relative;
+    overflow: hidden;
+}
+
+.hero-section::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1440 320"><path fill="rgba(255,255,255,0.05)" d="M0,96L48,112C96,128,192,160,288,160C384,160,480,128,576,122.7C672,117,768,139,864,144C960,149,1056,139,1152,128C1248,117,1344,107,1392,101.3L1440,96L1440,320L1392,320C1344,320,1248,320,1152,320C1056,320,960,320,864,320C768,320,672,320,576,320C480,320,384,320,288,320C192,320,96,320,48,320L0,320Z"></path></svg>') no-repeat bottom;
+    background-size: cover;
+    opacity: 0.3;
+}
+
+.hero-content {
+    position: relative;
+    z-index: 1;
+    text-align: center;
+    max-width: 900px;
+    margin: 0 auto;
 }
 
 .hero-content h1 {
-font-size: 3rem;
-margin-bottom: 1rem;
-font-weight: 700;
+    font-size: clamp(2rem, 5vw, 3.5rem);
+    font-weight: 800;
+    margin-bottom: 1rem;
+    line-height: 1.2;
+    letter-spacing: -0.02em;
+}
+
+.hero-content h1 .first-title {
+    display: block;
+}
+
+.hero-content h1 .second-title {
+    display: block;
+    background: linear-gradient(90deg, rgba(255,255,255,1) 0%, rgba(255,255,255,0.8) 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+.hero-content h2 {
+    font-size: clamp(1.25rem, 3vw, 1.75rem);
+    font-weight: 600;
+    margin-bottom: 1rem;
+    opacity: 0.95;
 }
 
 .hero-content p {
-font-size: 1.2rem;
-margin-bottom: 2rem;
-opacity: 0.9;
+    font-size: clamp(1rem, 2vw, 1.25rem);
+    margin-bottom: 2.5rem;
+    opacity: 0.9;
+    max-width: 700px;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+.hero-actions {
+    margin-bottom: 4rem;
+}
+
+/* Buttons */
+.btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 16px 32px;
+    background: var(--theme-palette-color-8);
+    color: var(--theme-palette-color-1);
+    font-weight: 600;
+    font-size: 16px;
+    border-radius: 50px;
+    border: none;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+}
+
+.btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(0,0,0,0.15);
+    background: var(--theme-palette-color-7);
+}
+
+.hero-section .btn {
+    background: var(--theme-palette-color-8);
+    color: var(--theme-palette-color-1);
+}
+
+.btn i {
+    font-size: 14px;
 }
 
 /* Stats Section */
 .stats-section {
-display: flex;
-justify-content: center;
-gap: 3rem;
-margin: 3rem 0;
-flex-wrap: wrap;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 3rem;
+    margin-top: 3rem;
+    padding-top: 3rem;
+    border-top: 1px solid rgba(255,255,255,0.2);
 }
 
 .stat-item {
-text-align: center;
+    text-align: center;
 }
 
 .stat-number {
-font-size: 2.5rem;
-font-weight: 700;
-color: white;
-display: block;
+    font-size: clamp(2.5rem, 5vw, 4rem);
+    font-weight: 800;
+    color: var(--theme-palette-color-8);
+    display: block;
+    line-height: 1;
+    margin-bottom: 0.5rem;
 }
 
 .stat-label {
-font-size: 1rem;
-opacity: 0.8;
+    font-size: 14px;
+    opacity: 0.85;
+    font-weight: 500;
 }
 
-/* Features Section */
+/* Section Styles */
 .features-section {
-padding: 80px 0;
-background: var(--wp--preset--color--palette-color-7);
+    padding: 100px 0;
+    background: var(--theme-palette-color-7);
 }
 
+.features-section:nth-child(even) {
+    background: var(--theme-palette-color-8);
+}
+
+.features-section h2 {
+    font-size: clamp(2rem, 4vw, 3rem);
+    font-weight: 800;
+    text-align: center;
+    margin-bottom: 1.5rem;
+    color: var(--theme-palette-color-4);
+    letter-spacing: -0.02em;
+}
+
+.features-section > .ct-container > p {
+    text-align: center;
+    font-size: 18px;
+    max-width: 800px;
+    margin: 0 auto 3rem;
+    color: var(--theme-palette-color-3);
+    line-height: 1.7;
+}
+
+/* Feature Grid */
 .feature-grid {
-display: grid;
-grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-gap: 2rem;
-margin-top: 3rem;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 2rem;
+    margin-top: 3rem;
 }
 
 .feature-card {
-background: white;
-padding: 2rem;
-border-radius: 12px;
-box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-transition: transform 0.3s ease;
+    background: var(--theme-palette-color-8);
+    padding: 2.5rem;
+    border-radius: 16px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.06);
+    transition: all 0.3s ease;
+    border: 1px solid var(--theme-palette-color-5);
 }
 
 .feature-card:hover {
-transform: translateY(-5px);
+    transform: translateY(-8px);
+    box-shadow: 0 12px 40px rgba(40, 114, 250, 0.12);
+    border-color: var(--theme-palette-color-1);
 }
 
 .feature-icon {
-font-size: 2rem;
-margin-bottom: 1rem;
+    font-size: 3rem;
+    margin-bottom: 1.5rem;
+    display: block;
 }
 
 .feature-card h3 {
-color: var(--wp--preset--color--palette-color-1);
-margin-bottom: 1rem;
+    color: var(--theme-palette-color-4);
+    font-size: 1.25rem;
+    font-weight: 700;
+    margin-bottom: 1rem;
+}
+
+.feature-card p {
+    color: var(--theme-palette-color-3);
+    line-height: 1.7;
+    font-size: 15px;
+}
+
+/* Process Tabs */
+.process-tabs {
+    display: flex;
+    justify-content: center;
+    gap: 1rem;
+    margin: 3rem 0 2rem;
+    flex-wrap: wrap;
+}
+
+.process-tab {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 1rem 1.5rem;
+    background: var(--theme-palette-color-8);
+    border: 2px solid var(--theme-palette-color-5);
+    border-radius: 50px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    font-weight: 600;
+    color: var(--theme-palette-color-3);
+}
+
+.process-tab:hover {
+    border-color: var(--theme-palette-color-1);
+    color: var(--theme-palette-color-1);
+}
+
+.process-tab.active {
+    background: var(--theme-palette-color-1);
+    border-color: var(--theme-palette-color-1);
+    color: var(--theme-palette-color-8);
+}
+
+.process-tab i {
+    font-size: 1.25rem;
+}
+
+.process-content {
+    margin-top: 3rem;
+}
+
+.process-panel {
+    display: none;
+    background: var(--theme-palette-color-8);
+    padding: 3rem;
+    border-radius: 16px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.06);
+}
+
+.process-panel.active {
+    display: block;
+    animation: fadeIn 0.5s ease;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.process-panel h3 {
+    color: var(--theme-palette-color-1);
+    font-size: 1.75rem;
+    margin-bottom: 1.5rem;
+    font-weight: 700;
+}
+
+.process-panel p {
+    font-size: 16px;
+    line-height: 1.8;
+    color: var(--theme-palette-color-3);
 }
 
 /* Testimonials */
 .testimonials-section {
-padding: 80px 0;
-background: var(--wp--preset--color--palette-color-6);
+    padding: 100px 0;
+    background: var(--theme-palette-color-6);
+}
+
+.testimonials-section h2 {
+    font-size: clamp(2rem, 4vw, 3rem);
+    font-weight: 800;
+    text-align: center;
+    margin-bottom: 3rem;
+    color: var(--theme-palette-color-4);
 }
 
 .testimonial-grid {
-display: grid;
-grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-gap: 2rem;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 2rem;
 }
 
 .testimonial-card {
-background: white;
-padding: 2rem;
-border-radius: 12px;
-box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    background: var(--theme-palette-color-8);
+    padding: 2.5rem;
+    border-radius: 16px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.06);
+    border-left: 4px solid var(--theme-palette-color-1);
+    transition: all 0.3s ease;
+}
+
+.testimonial-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 8px 30px rgba(0,0,0,0.1);
 }
 
 .testimonial-text {
-font-style: italic;
-margin-bottom: 1rem;
+    font-style: italic;
+    margin-bottom: 1.5rem;
+    color: var(--theme-palette-color-3);
+    line-height: 1.7;
+    font-size: 15px;
 }
 
 .testimonial-author {
-font-weight: 600;
-color: var(--wp--preset--color--palette-color-1);
+    font-weight: 700;
+    color: var(--theme-palette-color-4);
+    margin-bottom: 0.25rem;
+}
+
+.testimonial-company {
+    font-size: 14px;
+    color: var(--theme-palette-color-1);
+    font-weight: 500;
+}
+
+/* Feature List */
+.feature-list {
+    list-style: none;
+    margin: 2rem 0;
+    text-align: left;
+    max-width: 600px;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+.feature-list li {
+    padding: 0.75rem 0;
+    font-size: 16px;
+    font-weight: 500;
 }
 
 /* FAQ Section */
 .faq-section {
-padding: 80px 0;
+    padding: 100px 0;
+    background: var(--theme-palette-color-8);
+}
+
+.faq-section h2 {
+    font-size: clamp(2rem, 4vw, 3rem);
+    font-weight: 800;
+    text-align: center;
+    margin-bottom: 3rem;
+    color: var(--theme-palette-color-4);
+}
+
+.faq-list {
+    max-width: 900px;
+    margin: 0 auto;
 }
 
 .faq-item {
-background: white;
-border: 1px solid var(--wp--preset--color--palette-color-5);
-border-radius: 8px;
-margin-bottom: 1rem;
-overflow: hidden;
+    background: var(--theme-palette-color-7);
+    border: 1px solid var(--theme-palette-color-5);
+    border-radius: 12px;
+    margin-bottom: 1rem;
+    overflow: hidden;
+    transition: all 0.3s ease;
+}
+
+.faq-item:hover {
+    box-shadow: 0 4px 15px rgba(0,0,0,0.05);
 }
 
 .faq-question {
-padding: 1.5rem;
-font-weight: 600;
-cursor: pointer;
-display: flex;
-justify-content: space-between;
-align-items: center;
-background: var(--wp--preset--color--palette-color-7);
+    padding: 1.5rem 2rem;
+    font-weight: 600;
+    font-size: 16px;
+    cursor: pointer;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    color: var(--theme-palette-color-4);
+    transition: all 0.3s ease;
+}
+
+.faq-question:hover {
+    color: var(--theme-palette-color-1);
+}
+
+.faq-toggle {
+    width: 30px;
+    height: 30px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--theme-palette-color-8);
+    border-radius: 50%;
+    font-size: 20px;
+    color: var(--theme-palette-color-1);
+    flex-shrink: 0;
 }
 
 .faq-answer {
-padding: 1.5rem;
-border-top: 1px solid var(--wp--preset--color--palette-color-5);
-display: none;
+    padding: 0 2rem 1.5rem 2rem;
+    display: none;
+    color: var(--theme-palette-color-3);
+    line-height: 1.8;
 }
 
 .faq-answer.active {
-display: block;
+    display: block;
+    animation: fadeIn 0.3s ease;
 }
 
-/* Responsive */
+.faq-answer p {
+    margin: 0;
+}
+
+/* Footer */
+#footer {
+    background: var(--theme-palette-color-4);
+    color: var(--theme-palette-color-8);
+    padding: 2rem 0;
+    text-align: center;
+}
+
+.footer-copyright {
+    font-size: 14px;
+    opacity: 0.8;
+}
+
+.footer-copyright a {
+    color: var(--theme-palette-color-8);
+    text-decoration: underline;
+}
+
+/* Responsive Design */
+@media (max-width: 1024px) {
+    .header-menu .menu {
+        gap: 1.5rem;
+    }
+    
+    .menu-item a {
+        font-size: 14px;
+    }
+}
+
 @media (max-width: 768px) {
-.hero-content h1 {
-font-size: 2rem;
+    .header-content {
+        flex-direction: column;
+        gap: 1rem;
+    }
+    
+    .header-menu .menu {
+        flex-direction: column;
+        gap: 0.5rem;
+        text-align: center;
+    }
+    
+    .hero-section {
+        padding: 60px 0 50px;
+    }
+    
+    .stats-section {
+        grid-template-columns: 1fr;
+        gap: 2rem;
+    }
+    
+    .stat-number {
+        font-size: 2.5rem;
+    }
+    
+    .features-section {
+        padding: 60px 0;
+    }
+    
+    .feature-grid {
+        grid-template-columns: 1fr;
+        gap: 1.5rem;
+    }
+    
+    .process-tabs {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    
+    .process-tab {
+        justify-content: center;
+    }
+    
+    .process-panel {
+        padding: 2rem 1.5rem;
+    }
+    
+    .testimonial-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .btn {
+        width: 100%;
+        justify-content: center;
+    }
 }
 
-.stats-section {
-gap: 1.5rem;
+@media (max-width: 480px) {
+    .ct-container {
+        padding: 0 15px;
+    }
+    
+    .site-logo-container img {
+        height: 40px;
+    }
+    
+    .hero-content h1 {
+        font-size: 1.75rem;
+    }
+    
+    .hero-content h2 {
+        font-size: 1.25rem;
+    }
+    
+    .hero-content p {
+        font-size: 1rem;
+    }
+    
+    .feature-card {
+        padding: 1.5rem;
+    }
+    
+    .faq-question {
+        padding: 1rem 1.5rem;
+        font-size: 15px;
+    }
+    
+    .faq-answer {
+        padding: 0 1.5rem 1rem 1.5rem;
+    }
 }
 
-.stat-number {
-font-size: 2rem;
+/* Animations */
+@keyframes slideInUp {
+    from {
+        opacity: 0;
+        transform: translateY(30px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
 }
+
+.animate-on-scroll {
+    opacity: 0;
+    animation: slideInUp 0.6s ease forwards;
+}
+
+/* Utilities */
+.text-center {
+    text-align: center;
+}
+
+.mb-1 { margin-bottom: 0.5rem; }
+.mb-2 { margin-bottom: 1rem; }
+.mb-3 { margin-bottom: 1.5rem; }
+.mb-4 { margin-bottom: 2rem; }
+
+.mt-1 { margin-top: 0.5rem; }
+.mt-2 { margin-top: 1rem; }
+.mt-3 { margin-top: 1.5rem; }
+.mt-4 { margin-top: 2rem; }
+
+/* Print Styles */
+@media print {
+    .header-menu,
+    .btn,
+    #footer {
+        display: none;
+    }
 }
 </style>
 </head>
@@ -242,319 +726,762 @@ font-size: 2rem;
 <a class="skip-link screen-reader-text" href="#main">Saltar al contenido</a>
 
 <div id="main-container">
-<header id="header" class="ct-header">
-<div class="container">
-<div class="header-content">
-<div class="site-branding">
-<a href="/" class="site-logo-container" rel="home">
-<img width="512" height="512" src="/images/logo.png" alt="botinteligente.com.mx" class="default-logo">
-</a>	
-</div>
-<nav class="header-menu">
-<ul class="menu">
-<li class="menu-item current-menu-item">
-<a href="/" aria-current="page">Casos de éxito que hablan por sí solos</a>
-</li>
-<li class="menu-item">
-<a href="/servicios">Bot Modular</a>
-</li>
-<li class="menu-item">
-<a href="/contacto">Contáctanos</a>
-</li>
-<li class="menu-item">
-<a href="/nosotros">Sobre nosotros</a>
-</li>
-</ul>
-</nav>
-</div>
-</div>
-</header>
+    <header id="header" class="ct-header">
+        <div class="ct-container">
+            <div class="header-content">
+                <div class="site-branding">
+                    <a href="/" class="site-logo-container" rel="home">
+                        <img width="512" height="512" 
+                             src="/images/logo.png" 
+                             alt="botinteligente.com.mx" 
+                             class="default-logo lazyload">
+                    </a>	
+                </div>
+                <nav class="header-menu" aria-label="Principal">
+                    <ul class="menu">
+                        <li class="menu-item current-menu-item">
+                            <a href="/" aria-current="page">Casos de éxito</a>
+                        </li>
+                        <li class="menu-item">
+                            <a href="/servicios">Bot Modular</a>
+                        </li>
+                        <li class="menu-item">
+                            <a href="/contacto">Contáctanos</a>
+                        </li>
+                        <li class="menu-item">
+                            <a href="/nosotros">Sobre nosotros</a>
+                        </li>
+                    </ul>
+                </nav>
+            </div>
+        </div>
+    </header>
 
-<main id="main" class="site-main hfeed">
-<!-- Hero Section -->
-<section class="hero-section">
-<div class="container">
-<div class="hero-content">
-<h1>
-<span class="first-title">Confía en la inteligencia </span>
-<span class="second-title">que vende por ti</span>
-</h1>
-<h2>Automatiza tu negocio con inteligencia real</h2>
-<p>Creamos chatbots personalizados que venden, atienden y ahorran tiempo para tu negocio.</p>
-<div class="hero-actions">
-<a href="#contact" class="btn">Solicitar demo gratis</a>
-</div>
-<div class="stats-section">
-<div class="stat-item">
-<span class="stat-number" data-target="50">50</span>
-<span class="stat-label">negocios automatizados</span>
-</div>
-<div class="stat-item">
-<span class="stat-number" data-target="3000">3,000</span>
-<span class="stat-label">Miles de conversaciones automatizadas</span>
-</div>
-<div class="stat-item">
-<span class="stat-number" data-target="10">10+</span>
-<span class="stat-label">Integraciones con plataformas</span>
-</div>
-</div>
-</div>
-</div>
-</section>
+    <main id="main" class="site-main hfeed">
+        <!-- Hero Section -->
+        <section class="hero-section" id="hero">
+            <div class="ct-container">
+                <div class="hero-content">
+                    <h1>
+                        <span class="first-title">Confía en la inteligencia </span>
+                        <span class="second-title">que vende por ti</span>
+                    </h1>
+                    <h2>Automatiza tu negocio con inteligencia real</h2>
+                    <p>Creamos chatbots personalizados que venden, atienden y ahorran tiempo para tu negocio.</p>
+                    <div class="hero-actions">
+                        <a href="#contact" class="btn">
+                            Solicitar demo gratis
+                            <i class="fas fa-chevron-right"></i>
+                        </a>
+                    </div>
+                    <div class="stats-section">
+                        <div class="stat-item">
+                            <span class="stat-number" data-target="50">0</span>
+                            <span class="stat-label">negocios automatizados</span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-number" data-target="3000">0</span>
+                            <span class="stat-label">Miles de conversaciones automatizadas</span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-number" data-target="10">0</span>
+                            <span class="stat-label">Integraciones con plataformas</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
 
-<!-- Features Section -->
-<section class="features-section" id="features">
-<div class="container">
-<h2>Potencia tu negocio con integraciones inteligentes</h2>
-<p>Integra tu negocio con <strong>Facebook, Instagram, WhatsApp, Google y Pagina web</strong> para atender clientes sin límites.</p>
-<p>Un solo sistema, todas tus plataformas trabajando en sincronía.</p>
+        <!-- Integration Section -->
+        <section class="features-section" id="integrations">
+            <div class="ct-container">
+                <h2>Potencia tu negocio con integraciones inteligentes</h2>
+                <p>Integra tu negocio con <strong>Facebook, Instagram, WhatsApp, Google y Página web</strong> para atender clientes sin límites.</p>
+                <p>Un solo sistema, todas tus plataformas trabajando en sincronía.</p>
+                <div style="text-align: center; margin-top: 3rem;">
+                    <img src="/images/diseno3.jpg" 
+                         alt="Integraciones" 
+                         class="lazyload"
+                         style="max-width: 100%; height: auto; border-radius: 16px; box-shadow: 0 8px 30px rgba(0,0,0,0.1);">
+                </div>
+            </div>
+        </section>
 
-<div class="feature-grid">
-<div class="feature-card">
-<div class="feature-icon">⏰</div>
-<h3>Ahorra tiempo valioso</h3>
-<p>Tu bot atiende consultas repetitivas 24/7 mientras tú te enfocas en hacer crecer tu negocio.</p>
-</div>
-<div class="feature-card">
-<div class="feature-icon">💰</div>
-<h3>Aumenta tus ventas</h3>
-<p>Captura leads automáticamente, responde al instante y cierra ventas, nunca pierdas otra oportunidad de negocio.</p>
-</div>
-<div class="feature-card">
-<div class="feature-icon">👤</div>
-<h3>Atención personalizada</h3>
-<p>Cada conversación se adapta al cliente, tu bot recuerda preferencias, ofrece recomendaciones.</p>
-</div>
-<div class="feature-card">
-<div class="feature-icon">⚡</div>
-<h3>Automatización inteligente</h3>
-<p>Agenda citas, envía recordatorios y gestiona tu negocio de forma autónoma. Eficiencia máxima garantizada.</p>
-</div>
-</div>
-</div>
-</section>
+        <!-- Benefits Section -->
+        <section class="features-section" id="benefits">
+            <div class="ct-container">
+                <h2>Beneficios que transforman tu negocio</h2>
+                <div class="feature-grid">
+                    <div class="feature-card">
+                        <div class="feature-icon">⏰</div>
+                        <h3>Ahorra tiempo valioso</h3>
+                        <p>Tu bot atiende consultas repetitivas 24/7 mientras tú te enfocas en hacer crecer tu negocio.</p>
+                    </div>
+                    <div class="feature-card">
+                        <div class="feature-icon">💰</div>
+                        <h3>Aumenta tus ventas</h3>
+                        <p>Captura leads automáticamente, responde al instante y cierra ventas, nunca pierdas otra oportunidad de negocio.</p>
+                    </div>
+                    <div class="feature-card">
+                        <div class="feature-icon">👤</div>
+                        <h3>Atención personalizada</h3>
+                        <p>Cada conversación se adapta al cliente, tu bot recuerda preferencias, ofrece recomendaciones.</p>
+                    </div>
+                    <div class="feature-card">
+                        <div class="feature-icon">⚡</div>
+                        <h3>Automatización inteligente</h3>
+                        <p>Agenda citas, envía recordatorios y gestiona tu negocio de forma autónoma. Eficiencia máxima garantizada.</p>
+                    </div>
+                </div>
+            </div>
+        </section>
 
-<!-- How It Works Section -->
-<section class="features-section" id="how-it-works">
-<div class="container">
-<h2>¿Cómo funciona nuestro proceso?</h2>
-<div class="process-tabs">
-<div class="process-tab active" data-tab="design">
-<i class="fas fa-network-wired"></i>
-<span>Diseño Estratégico</span>
-</div>
-<div class="process-tab" data-tab="development">
-<i class="far fa-user"></i>
-<span>Desarrollo personalizado</span>
-</div>
-<div class="process-tab" data-tab="testing">
-<i class="fas fa-spinner"></i>
-<span>Pruebas exhaustivas</span>
-</div>
-<div class="process-tab" data-tab="activation">
-<i class="fas fa-bolt-lightning"></i>
-<span>Activación inmediata</span>
-</div>
+        <!-- How It Works Section -->
+        <section class="features-section" id="how-it-works">
+            <div class="ct-container">
+                <h2>¿Cómo funciona nuestro proceso?</h2>
+                <div class="process-tabs">
+                    <div class="process-tab active" data-tab="design">
+                        <i class="fas fa-network-wired"></i>
+                        <span>Diseño Estratégico</span>
+                    </div>
+                    <div class="process-tab" data-tab="development">
+                        <i class="far fa-user"></i>
+                        <span>Desarrollo personalizado</span>
+                    </div>
+                    <div class="process-tab" data-tab="testing">
+                        <i class="fas fa-spinner"></i>
+                        <span>Pruebas exhaustivas</span>
+                    </div>
+                    <div class="process-tab" data-tab="activation">
+                        <i class="fas fa-bolt"></i>
+                        <span>Activación inmediata</span>
+                    </div>
+                </div>
+
+                <div class="process-content">
+                    <div class="process-panel active" id="panel-design">
+                        <h3>Estructura de Flujo de conversación</h3>
+                        <p>Comenzamos con una <strong>inmersión profunda en tu negocio</strong>. Analizamos tus objetivos, identificamos a tu audiencia clave, y mapeamos los puntos de contacto más importantes. El equipo diseña meticulosamente la estructura conversacional, definiendo los flujos de diálogo, los casos de uso, la identificación de intenciones. También establecemos las estrategias de respuesta para situaciones complejas y el tono de voz que mejor represente tu marca, asegurando una experiencia de usuario óptima y alineada con tus valores.</p>
+                    </div>
+                    <div class="process-panel" id="panel-development">
+                        <h3>Desarrollo personalizado y tecnológico</h3>
+                        <p>Con el diseño aprobado, nuestro equipo procede a la <strong>construcción de tu bot desde cero</strong>. Utilizamos tecnologías avanzadas de Inteligencia Artificial (IA) para asegurar una comprensión contextual superior. Adaptamos cada módulo y funcionalidad al 100% a tus procesos internos, integrándolo con tus sistemas existentes (CRM, bases de datos, plataformas de e-commerce, etc.) mediante APIs robustas. Este enfoque garantiza que el bot no solo responda preguntas, sino que también realice acciones, escalando con tu negocio.</p>
+                    </div>
+                    <div class="process-panel" id="panel-testing">
+                        <h3>Pruebas exhaustivas y validación</h3>
+                        <p>Antes de cualquier lanzamiento, sometemos el chatbot a un <strong>riguroso proceso de pruebas</strong>. Esto incluye pruebas funcionales para verificar que todas las respuestas y acciones se ejecuten correctamente, pruebas de rendimiento para asegurar su escalabilidad y velocidad. Simulamos una amplia gama de escenarios, incluyendo casos límite y preguntas ambiguas, para identificar y corregir cualquier inconsistencia o mejora necesaria. Nuestro objetivo es garantizar interacciones fluidas, efectivas y una experiencia de usuario sin fricciones.</p>
+                    </div>
+                    <div class="process-panel" id="panel-activation">
+                        <h3>Activación y lanzamiento optimizado</h3>
+                        <p>Una vez validado, tu bot está listo para <strong>integrarse y ser lanzado en los canales elegidos</strong>: tu sitio web y WhatsApp. Nos encargamos de una implementación sin interrupciones esto nos permite seguir de cerca el rendimiento del bot desde el primer minuto, analizando métricas clave como la tasa de resolución, la satisfacción del usuario, los temas más consultados y la eficiencia en la conversión de leads. Esta etapa culmina con una supervisión inicial que asegura una adaptación fluida a las interacciones con usuarios reales.</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Use Cases Section -->
+        <section class="features-section" id="use-cases">
+            <div class="ct-container">
+                <h2>Casos de uso reales</h2>
+                <p>A diferencia de otros bots, el nuestro puede mandar imágenes, videos y links directos a tus clientes. Es como tener un asistente digital que vende por ti todo el día, mostrando lo que ofreces y guiando al cliente hasta la compra.</p>
+
+                <div class="feature-grid">
+                    <div class="feature-card">
+                        <div class="feature-icon">🍽️</div>
+                        <h3>Restaurantes y cafeterías</h3>
+                        <p>Toma pedidos automáticamente, gestiona reservaciones y envía menús actualizados.</p>
+                    </div>
+                    <div class="feature-card">
+                        <div class="feature-icon">🏥</div>
+                        <h3>Clínicas y consultorios</h3>
+                        <p>Coordina citas médicas, envía recordatorios y recopila información previa a las consultas de forma eficiente.</p>
+                    </div>
+                    <div class="feature-card">
+                        <div class="feature-icon">🎪</div>
+                        <h3>Eventos y Experiencias</h3>
+                        <p>Registra asistentes, comparte información del evento y responde dudas al instante. Ideal para carreras, talleres o conciertos.</p>
+                    </div>
+                    <div class="feature-card">
+                        <div class="feature-icon">🛍️</div>
+                        <h3>Negocios de servicios y agencias</h3>
+                        <p>Responde consultas, agenda citas y da precios o cotizaciones automáticas. Convierte más mensajes en clientes reales sin perder tiempo.</p>
+                    </div>
+                    <div class="feature-card">
+                        <div class="feature-icon">💇</div>
+                        <h3>Salones de belleza y barberías</h3>
+                        <p>Agenda citas automáticamente, confirma horarios y envía recordatorios. Reduce cancelaciones y mejora la atención sin llamadas.</p>
+                    </div>
+                    <div class="feature-card">
+                        <div class="feature-icon">🏠</div>
+                        <h3>Inmobiliarias</h3>
+                        <p>Califica prospectos, agenda visitas y comparte fichas de propiedades en segundos. Ahorra tiempo y filtra solo clientes interesados.</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Pricing Section -->
+        <section class="features-section" id="pricing">
+            <div class="ct-container">
+                <h2>Planes de inversión transparentes</h2>
+                                <p>Sin costos ocultos ni sorpresas. Inversión clara que se paga sola con el tiempo y ventas que recuperas.</p>
+
+                <div class="feature-grid" style="margin-top: 3rem;">
+                    <div class="feature-card" style="text-align: center; border: 2px solid var(--theme-palette-color-1);">
+                        <div class="feature-icon">💼</div>
+                        <h3>Desarrollo del bot Modular</h3>
+                        <div style="margin: 2rem 0;">
+                            <span style="font-size: 2.5rem; font-weight: 800; color: var(--theme-palette-color-1);">$1,500 - $5,000</span>
+                            <p style="margin-top: 0.5rem; font-size: 14px; opacity: 0.7;">Pago único por desarrollo completo</p>
+                        </div>
+                        <a href="#contact" class="btn">Ver Más</a>
+                    </div>
+                    <div class="feature-card" style="text-align: center; border: 2px solid var(--theme-palette-color-1);">
+                        <div class="feature-icon">🔄</div>
+                        <h3>Mantenimiento Mensual</h3>
+                        <div style="margin: 2rem 0;">
+                            <span style="font-size: 2.5rem; font-weight: 800; color: var(--theme-palette-color-1);">$499</span>
+                            <p style="margin-top: 0.5rem; font-size: 14px; opacity: 0.7;">Por mes</p>
+                        </div>
+                        <ul style="list-style: none; padding: 0; text-align: left; margin-bottom: 2rem;">
+                            <li style="padding: 0.5rem 0;">✅ Soporte técnico continuo</li>
+                            <li style="padding: 0.5rem 0;">✅ Actualizaciones incluidas</li>
+                            <li style="padding: 0.5rem 0;">✅ Mejoras del sistema</li>
+                            <li style="padding: 0.5rem 0;">✅ Hosting garantizado</li>
+                        </ul>
+                        <a href="#contact" class="btn">Contratar</a>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Testimonials Section -->
+        <section class="testimonials-section" id="testimonials">
+            <div class="ct-container">
+                <h2>Casos de éxito que hablan por sí solos</h2>
+                <div class="testimonial-grid">
+                    <div class="testimonial-card">
+                        <p class="testimonial-text">"Nuestro bot atendió más de 500 conversaciones en el primer mes. Nuestra conversión pasó de 2.2% a 3.9% aparte que ya no estoy contestando los mensajes repetidos todo el día a mis clientes."</p>
+                        <p class="testimonial-author">Ricardo Hernández</p>
+                        <p class="testimonial-company">Director de FitMarket</p>
+                    </div>
+                    <div class="testimonial-card">
+                        <p class="testimonial-text">"Con el bot que instalamos en WhatsApp ahora respondemos al instante, incluso fuera del horario de trabajo. Antes perdíamos muchos clientes por no contestar a tiempo, ahora cerramos ventas. La atención se volvió mucho más ágil y ordenada."</p>
+                        <p class="testimonial-author">María Fernanda</p>
+                        <p class="testimonial-company">Agencia Creativa</p>
+                    </div>
+                    <div class="testimonial-card">
+                        <p class="testimonial-text">"El chatbot nos ayudó a reducir casi 60% los mensajes repetidos de cotización. Además, los clientes llegan al WhatsApp con toda la información lista para comprar. De verdad se nota el cambio en la productividad y el tiempo que nos ahorra cada día."</p>
+                        <p class="testimonial-author">Jorge Castillo</p>
+                        <p class="testimonial-company">Emprendedor</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- CTA Section -->
+        <section class="hero-section" id="contact">
+            <div class="ct-container">
+                <div class="hero-content">
+                    <h2>Comienza a automatizar hoy mismo</h2>
+                    <p>No esperes más para transformar tu negocio. Agenda una demo gratuita y descubre cómo un chatbot personalizado puede resolver tus desafíos de <strong>atención</strong>, <strong>ventas</strong> y <strong>tiempo</strong>.</p>
+                    <ul class="feature-list">
+                        <li>✅ Hosting y servidores garantizados</li>
+                        <li>✅ Soporte durante implementación</li>
+                        <li>✅ Chatbot personalizado desde cero</li>
+                        <li>✅ Atención humana real</li>
+                    </ul>
+                    <div class="hero-actions">
+                        <a href="/contacto" class="btn">
+                            Contáctanos
+                            <i class="fas fa-chevron-right"></i>
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- FAQ Section -->
+        <section class="faq-section" id="faq">
+            <div class="ct-container">
+                <h2>Preguntas Frecuentes</h2>
+                <div class="faq-list">
+                    <div class="faq-item">
+                        <div class="faq-question">
+                            ¿Cómo se configura el chatbot para mi negocio?
+                            <span class="faq-toggle">+</span>
+                        </div>
+                        <div class="faq-answer">
+                            <p>Tu bot se conecta a tu WhatsApp mediante un <strong>código QR</strong>, sin complicaciones técnicas. Analizamos tu negocio y las preguntas frecuentes de tus clientes, diseñamos los flujos de conversación, configuramos las integraciones y en solo <strong>1 a 2 días hábiles</strong> tu bot está listo para atender y vender automáticamente.</p>
+                        </div>
+                    </div>
+                    <div class="faq-item">
+                        <div class="faq-question">
+                            ¿Qué resultados puedo esperar después de implementar el chatbot?
+                            <span class="faq-toggle">+</span>
+                        </div>
+                        <div class="faq-answer">
+                            <p>Nuestros clientes logran reducir hasta un <strong>90% del tiempo de respuesta</strong>, aumentar sus consultas atendidas y cerrar más ventas gracias a la atención inmediata y constante del bot.</p>
+                        </div>
+                    </div>
+                    <div class="faq-item">
+                        <div class="faq-question">
+                            ¿Qué beneficios obtiene mi negocio al automatizar la atención?
+                            <span class="faq-toggle">+</span>
+                        </div>
+                        <div class="faq-answer">
+                            <p>Tu asistente virtual <strong>responde al instante las 24 horas del día</strong>, incluso cuando tu negocio está cerrado. Con él <strong>aumentas tus ventas</strong>, <strong>mejoras la tasa de respuesta</strong> y <strong>ahorras horas de trabajo</strong> que tu equipo antes dedicaba a responder mensajes. Además, ofrece una <strong>experiencia más rápida y profesional</strong>, elevando la percepción de tu marca y la satisfacción de tus clientes.</p>
+                        </div>
+                    </div>
+                    <div class="faq-item">
+                        <div class="faq-question">
+                            ¿Cuál es el costo del servicio?
+                            <span class="faq-toggle">+</span>
+                        </div>
+                        <div class="faq-answer">
+                            <p>El desarrollo inicial tiene un costo desde <strong>$1,500 MXN</strong>, e incluye personalización completa.<br>Además, ofrecemos <strong>mantenimiento mensual por $499 MXN</strong>, que cubre soporte, mejoras y actualizaciones.</p>
+                        </div>
+                    </div>
+                    <div class="faq-item">
+                        <div class="faq-question">
+                            ¿Qué soporte ofrecen si tengo dudas o necesito cambios?
+                            <span class="faq-toggle">+</span>
+                        </div>
+                        <div class="faq-answer">
+                            <p>Tendrás acceso directo a nuestro soporte por <strong>WhatsApp y correo</strong>, con atención personalizada para resolver cualquier ajuste o actualización que necesites.</p>
+                        </div>
+                    </div>
+                    <div class="faq-item">
+                        <div class="faq-question">
+                            ¿Mis datos y los de mis clientes están seguros?
+                            <span class="faq-toggle">+</span>
+                        </div>
+                        <div class="faq-answer">
+                            <p>Sí. Todos los datos se manejan bajo protocolos de privacidad y cifrado. No almacenamos conversaciones fuera de los servidores oficiales de las plataformas.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <footer id="footer" class="ct-footer">
+        <div class="ct-container">
+            <div class="footer-content">
+                <div class="footer-copyright">
+                    Copyright © 2025 - <a href="/">botinteligente.com.mx</a>
+                </div>
+            </div>
+        </div>
+    </footer>
 </div>
 
-<div class="process-content">
-<div class="process-panel active" id="panel-design">
-<h3>Estructura de Flujo de conversación</h3>
-<p>Comenzamos con una <strong>inmersión profunda en tu negocio</strong>. Analizamos tus objetivos, identificamos a tu audiencia clave, y mapeamos los puntos de contacto más importantes.</p>
-</div>
-<div class="process-panel" id="panel-development">
-<h3>Desarrollo personalizado y tecnológico</h3>
-<p>Con el diseño aprobado, nuestro equipo procede a la <strong>construcción de tu bot desde cero</strong>. Utilizamos tecnologías avanzadas de Inteligencia Artificial.</p>
-</div>
-<div class="process-panel" id="panel-testing">
-<h3>Pruebas exhaustivas y validación</h3>
-<p>Antes de cualquier lanzamiento, sometemos el chatbot a un <strong>riguroso proceso de pruebas</strong> para garantizar interacciones fluidas y efectivas.</p>
-</div>
-<div class="process-panel" id="panel-activation">
-<h3>Activación y lanzamiento optimizado</h3>
-<p>Una vez validado, tu bot está listo para <strong>integrarse y ser lanzado en los canales elegidos</strong>: tu sitio web y WhatsApp.</p>
-</div>
-</div>
-</div>
-</section>
-
-<!-- Use Cases Section -->
-<section class="features-section" id="use-cases">
-<div class="container">
-<h2>Casos de uso reales</h2>
-<p>A diferencia de otros bots, el nuestro puede mandar imágenes, videos y links directos a tus clientes. Es como tener un asistente digital que vende por ti todo el día, mostrando lo que ofreces y guiando al cliente hasta la compra.</p>
-
-<div class="feature-grid">
-<div class="feature-card">
-<div class="feature-icon">🏪</div>
-<h3>Restaurantes y cafeterías</h3>
-<p>Toma pedidos automáticamente, gestiona reservaciones y envía menús actualizados.</p>
-</div>
-<div class="feature-card">
-<div class="feature-icon">🏥</div>
-<h3>Clínicas y consultorios</h3>
-<p>Coordina citas médicas, envía recordatorios y recopila información previa a las consultas de forma eficiente.</p>
-</div>
-<div class="feature-card">
-<div class="feature-icon">🎪</div>
-<h3>Eventos y Experiencias</h3>
-<p>Registra asistentes, comparte información del evento y responde dudas al instante.</p>
-</div>
-</div>
-</div>
-</section>
-
-<!-- Testimonials Section -->
-<section class="testimonials-section" id="testimonials">
-<div class="container">
-<h2>Casos de éxito que hablan por sí solos</h2>
-<div class="testimonial-grid">
-<div class="testimonial-card">
-<p class="testimonial-text">Nuestro bot atendió más de 500 conversaciones en el primer mes. Nuestra conversión paso de 2.2% a 3.9% aparte que ya no estoy contestando los mensajes repetidos todo el dia a mis clientes.</p>
-<p class="testimonial-author">Ricardo Hernández</p>
-<p class="testimonial-company">Director de FitMarket</p>
-</div>
-<div class="testimonial-card">
-<p class="testimonial-text">Con el bot que instalamos en WhatsApp ahora respondemos al instante, incluso fuera del horario de trabajo. Antes perdíamos muchos clientes por no contestar a tiempo, ahora cerramos ventas.</p>
-<p class="testimonial-author">María Fernanda</p>
-<p class="testimonial-company">Agencia Creativa</p>
-</div>
-<div class="testimonial-card">
-<p class="testimonial-text">El chatbot nos ayudó a reducir casi 60% los mensajes repetidos de cotización. Además, los clientes llegan al WhatsApp con toda la información lista para comprar.</p>
-<p class="testimonial-author">Jorge Castillo</p>
-<p class="testimonial-company">Emprendedor</p>
-</div>
-</div>
-</div>
-</section>
-
-<!-- CTA Section -->
-<section class="hero-section" id="contact">
-<div class="container">
-<div class="hero-content">
-<h2>Comienza a automatizar hoy mismo</h2>
-<p>No esperes más para transformar tu negocio. Agenda una demo gratuita y descubre cómo un chatbot personalizado puede resolver tus desafíos de <strong>atención</strong>, <strong>ventas</strong> y <strong>tiempo</strong>.</p>
-<ul class="feature-list">
-<li>✅ Hosting y servidores garantizados</li>
-<li>✅ Soporte durante implementación</li>
-<li>✅ Chatbot personalizado desde cero</li>
-<li>✅ Atención humana real</li>
-</ul>
-<a href="/contacto" class="btn">Contáctanos</a>
-</div>
-</div>
-</section>
-
-<!-- FAQ Section -->
-<section class="faq-section" id="faq">
-<div class="container">
-<h2>Preguntas Frecuentes</h2>
-<div class="faq-list">
-<div class="faq-item">
-<div class="faq-question">
-¿Cómo se configura el chatbot para mi negocio?
-<span class="faq-toggle">+</span>
-</div>
-<div class="faq-answer">
-<p>Tu bot se conecta a tu WhatsApp mediante un <strong>código QR</strong>, sin complicaciones técnicas. Analizamos tu negocio y las preguntas frecuentes de tus clientes, diseñamos los flujos de conversación, configuramos las integraciones y en solo <strong>1 a 2 días hábiles</strong> tu bot está listo para atender y vender automáticamente.</p>
-</div>
-</div>
-<div class="faq-item">
-<div class="faq-question">
-¿Qué resultados puedo esperar después de implementar el chatbot?
-<span class="faq-toggle">+</span>
-</div>
-<div class="faq-answer">
-<p>Nuestros clientes logran reducir hasta un <strong>90 % del tiempo de respuesta</strong>, aumentar sus consultas atendidas y cerrar más ventas gracias a la atención inmediata y constante del bot.</p>
-</div>
-</div>
-<div class="faq-item">
-<div class="faq-question">
-¿Qué beneficios obtiene mi negocio al automatizar la atención?
-<span class="faq-toggle">+</span>
-</div>
-<div class="faq-answer">
-<p>Tu asistente virtual <strong>responde al instante las 24 horas del día</strong>, incluso cuando tu negocio está cerrado. Con él <strong>aumentas tus ventas</strong>, <strong>mejoras la tasa de respuesta</strong> y <strong>ahorras horas de trabajo</strong> que tu equipo antes dedicaba a responder mensajes.</p>
-</div>
-</div>
-<div class="faq-item">
-<div class="faq-question">
-¿Cuál es el costo del servicio?
-<span class="faq-toggle">+</span>
-</div>
-<div class="faq-answer">
-<p>El desarrollo inicial tiene un costo desde <strong>$1,500 MXN</strong>, e incluye personalización completa.<br>Además, ofrecemos <strong>mantenimiento mensual por $499 MXN</strong>, que cubre soporte, mejoras y actualizaciones.</p>
-</div>
-</div>
-</div>
-</div>
-</section>
-</main>
-
-<footer id="footer" class="ct-footer">
-<div class="container">
-<div class="footer-content">
-<div class="footer-copyright">
-Copyright © 2025 - WordPress Theme by <a href="https://creativethemes.com/">CreativeThemes</a>
-</div>
-</div>
-</div>
-</footer>
+<!-- WhatsApp Float Button -->
+<div class="whatsapp-float" id="whatsapp-float">
+    <a href="https://wa.me/5212206006275?text=Hola%20quisiera%20saber%20mas%20acerca%20del%20bot%20modular%20de%20bot%20inteligente" 
+       target="_blank" 
+       rel="noopener noreferrer"
+       aria-label="Contactar por WhatsApp">
+        <svg viewBox="0 0 32 32" width="32" height="32">
+            <path fill="currentColor" d="M16 0c-8.837 0-16 7.163-16 16 0 2.825 0.737 5.607 2.137 8.048l-2.137 7.952 7.933-2.127c2.42 1.37 5.173 2.127 8.067 2.127 8.837 0 16-7.163 16-16s-7.163-16-16-16zM16 29.467c-2.482 0-4.908-0.646-7.07-1.87l-0.507-0.292-5.247 1.408 1.408-5.228-0.32-0.527c-1.342-2.201-2.050-4.717-2.050-7.29 0-7.72 6.28-14 14-14s14 6.28 14 14-6.28 14-14 14zM21.803 19.015c-0.294-0.147-1.735-0.854-2.005-0.951s-0.464-0.147-0.66 0.147-0.758 0.951-0.929 1.148-0.343 0.22-0.636 0.073-1.243-0.457-2.366-1.457c-0.875-0.778-1.466-1.74-1.637-2.034s-0.018-0.452 0.128-0.598c0.132-0.131 0.294-0.343 0.441-0.514s0.196-0.294 0.294-0.49 0.049-0.367-0.025-0.514-0.66-1.587-0.904-2.176c-0.238-0.573-0.479-0.495-0.66-0.504-0.171-0.008-0.367-0.010-0.563-0.010s-0.514 0.073-0.783 0.367-1.029 1.005-1.029 2.451 1.053 2.843 1.2 3.039 2.096 3.199 5.077 4.487c0.709 0.306 1.263 0.489 1.694 0.626 0.712 0.226 1.36 0.194 1.872 0.118 0.571-0.085 1.758-0.719 2.006-1.413s0.248-1.29 0.173-1.413-0.269-0.196-0.563-0.343z"></path>
+        </svg>
+    </a>
 </div>
 
+<style>
+.whatsapp-float {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    z-index: 9999;
+}
+
+.whatsapp-float a {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 60px;
+    height: 60px;
+    background: #25D366;
+    color: white;
+    border-radius: 50%;
+    box-shadow: 0 4px 20px rgba(37, 211, 102, 0.4);
+    transition: all 0.3s ease;
+}
+
+.whatsapp-float a:hover {
+    transform: scale(1.1);
+    box-shadow: 0 6px 25px rgba(37, 211, 102, 0.6);
+}
+
+@media (max-width: 768px) {
+    .whatsapp-float {
+        bottom: 15px;
+        right: 15px;
+    }
+    
+    .whatsapp-float a {
+        width: 50px;
+        height: 50px;
+    }
+    
+    .whatsapp-float svg {
+        width: 26px;
+        height: 26px;
+    }
+}
+</style>
+
+<!-- Scripts -->
 <script>
 // FAQ Toggle Functionality
-document.querySelectorAll('.faq-question').forEach(question => {
-question.addEventListener('click', () => {
-const answer = question.nextElementSibling;
-const toggle = question.querySelector('.faq-toggle');
-answer.classList.toggle('active');
-toggle.textContent = answer.classList.contains('active') ? '−' : '+';
-});
+document.addEventListener('DOMContentLoaded', function() {
+    const faqQuestions = document.querySelectorAll('.faq-question');
+    
+    faqQuestions.forEach(question => {
+        question.addEventListener('click', function() {
+            const answer = this.nextElementSibling;
+            const toggle = this.querySelector('.faq-toggle');
+            const isActive = answer.classList.contains('active');
+            
+                        // Close all other FAQs (optional - remove if you want multiple FAQs open at once)
+            document.querySelectorAll('.faq-answer').forEach(ans => {
+                if (ans !== answer) {
+                    ans.classList.remove('active');
+                }
+            });
+            document.querySelectorAll('.faq-toggle').forEach(tog => {
+                if (tog !== toggle) {
+                    tog.textContent = '+';
+                }
+            });
+            
+            // Toggle current FAQ
+            answer.classList.toggle('active');
+            toggle.textContent = answer.classList.contains('active') ? '−' : '+';
+        });
+    });
+
+    // Process Tabs Functionality
+    const processTabs = document.querySelectorAll('.process-tab');
+    
+    processTabs.forEach(tab => {
+        tab.addEventListener('click', function() {
+            // Remove active class from all tabs and panels
+            document.querySelectorAll('.process-tab').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.process-panel').forEach(p => p.classList.remove('active'));
+            
+            // Add active class to clicked tab and corresponding panel
+            this.classList.add('active');
+            const panelId = 'panel-' + this.dataset.tab;
+            const panel = document.getElementById(panelId);
+            if (panel) {
+                panel.classList.add('active');
+            }
+        });
+    });
+
+    // Animated Counter Function
+    function animateCounter(element, target) {
+        let current = 0;
+        const increment = target / 100;
+        const duration = 2000; // 2 seconds
+        const stepTime = duration / 100;
+        
+        const timer = setInterval(() => {
+            current += increment;
+            if (current >= target) {
+                current = target;
+                clearInterval(timer);
+            }
+            
+            // Format number with commas
+            const formattedNumber = Math.floor(current).toLocaleString('es-MX');
+            element.textContent = formattedNumber + (element.dataset.target === '10' ? '+' : '');
+        }, stepTime);
+    }
+
+    // Intersection Observer for counters
+    const counterObserver = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+            if (entry.isIntersecting && !entry.target.classList.contains('animated')) {
+                const counter = entry.target;
+                const target = parseInt(counter.dataset.target);
+                animateCounter(counter, target);
+                counter.classList.add('animated');
+                counterObserver.unobserve(counter);
+            }
+        });
+    }, {
+        threshold: 0.5
+    });
+
+    // Observe all stat numbers
+    document.querySelectorAll('.stat-number').forEach(counter => {
+        counterObserver.observe(counter);
+    });
+
+    // Smooth scroll for anchor links
+    document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+        anchor.addEventListener('click', function (e) {
+            const href = this.getAttribute('href');
+            
+            // Don't prevent default for links that just have # (like the toggle)
+            if (href === '#') return;
+            
+            e.preventDefault();
+            const target = document.querySelector(href);
+            
+            if (target) {
+                const headerOffset = 80;
+                const elementPosition = target.getBoundingClientRect().top;
+                const offsetPosition = elementPosition + window.pageYOffset - headerOffset;
+
+                window.scrollTo({
+                    top: offsetPosition,
+                    behavior: 'smooth'
+                });
+            }
+        });
+    });
+
+    // Lazy loading images
+    if ('IntersectionObserver' in window) {
+        const imageObserver = new IntersectionObserver((entries, observer) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    const img = entry.target;
+                    if (img.dataset.src) {
+                        img.src = img.dataset.src;
+                        img.classList.remove('lazyload');
+                        img.classList.add('lazyloaded');
+                        imageObserver.unobserve(img);
+                    }
+                }
+            });
+        });
+
+        document.querySelectorAll('img.lazyload').forEach(img => {
+            imageObserver.observe(img);
+        });
+    } else {
+        // Fallback for browsers that don't support IntersectionObserver
+        document.querySelectorAll('img.lazyload').forEach(img => {
+            if (img.dataset.src) {
+                img.src = img.dataset.src;
+                img.classList.remove('lazyload');
+                img.classList.add('lazyloaded');
+            }
+        });
+    }
+
+    // Animate elements on scroll
+    const scrollObserver = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+            if (entry.isIntersecting) {
+                entry.target.classList.add('animate-on-scroll');
+                scrollObserver.unobserve(entry.target);
+            }
+        });
+    }, {
+        threshold: 0.1,
+        rootMargin: '0px 0px -50px 0px'
+    });
+
+    // Observe feature cards and testimonials
+    document.querySelectorAll('.feature-card, .testimonial-card, .process-panel').forEach(el => {
+        scrollObserver.observe(el);
+    });
+
+    // Mobile menu toggle (if needed)
+    const createMobileMenu = () => {
+        if (window.innerWidth <= 768) {
+            const headerMenu = document.querySelector('.header-menu');
+            const menuToggle = document.createElement('button');
+            menuToggle.className = 'menu-toggle';
+            menuToggle.innerHTML = '<i class="fas fa-bars"></i>';
+            menuToggle.setAttribute('aria-label', 'Abrir menú');
+            
+            if (headerMenu && !document.querySelector('.menu-toggle')) {
+                headerMenu.parentNode.insertBefore(menuToggle, headerMenu);
+                
+                menuToggle.addEventListener('click', () => {
+                    headerMenu.classList.toggle('active');
+                    menuToggle.innerHTML = headerMenu.classList.contains('active') 
+                        ? '<i class="fas fa-times"></i>' 
+                        : '<i class="fas fa-bars"></i>';
+                });
+            }
+        }
+    };
+
+    createMobileMenu();
+    window.addEventListener('resize', createMobileMenu);
+
+    // Add scroll behavior to header
+    let lastScroll = 0;
+    const header = document.getElementById('header');
+    
+    window.addEventListener('scroll', () => {
+        const currentScroll = window.pageYOffset;
+        
+        if (currentScroll > 100) {
+            header.style.boxShadow = '0 2px 15px rgba(0,0,0,0.1)';
+        } else {
+            header.style.boxShadow = '0 2px 8px rgba(0,0,0,0.05)';
+        }
+        
+        lastScroll = currentScroll;
+    });
 });
 
-// Process Tabs Functionality
-document.querySelectorAll('.process-tab').forEach(tab => {
-tab.addEventListener('click', () => {
-// Remove active class from all tabs and panels
-document.querySelectorAll('.process-tab').forEach(t => t.classList.remove('active'));
-document.querySelectorAll('.process-panel').forEach(p => p.classList.remove('active'));
-// Add active class to clicked tab and corresponding panel
-tab.classList.add('active');
-const panelId = 'panel-' + tab.dataset.tab;
-document.getElementById(panelId).classList.add('active');
-});
-});
+// Google Analytics (if needed)
+<% if (typeof googleAnalyticsId !== 'undefined' && googleAnalyticsId) { %>
+window.dataLayer = window.dataLayer || [];
+function gtag(){dataLayer.push(arguments);}
+gtag('js', new Date());
+gtag('config', '<%= googleAnalyticsId %>');
+<% } %>
 
-// Animated Counter
-function animateCounter(element, target) {
-let current = 0;
-const increment = target / 100;
-const timer = setInterval(() => {
-current += increment;
-if (current >= target) {
-current = target;
-clearInterval(timer);
-}
-element.textContent = Math.floor(current).toLocaleString();
-}, 20);
-}
-
-// Intersection Observer for counters
-const observer = new IntersectionObserver((entries) => {
-entries.forEach(entry => {
-if (entry.isIntersecting) {
-const counter = entry.target;
-const target = parseInt(counter.dataset.target);
-animateCounter(counter, target);
-observer.unobserve(counter);
-}
-});
-});
-
-document.querySelectorAll('.stat-number').forEach(counter => {
-observer.observe(counter);
-});
+// Facebook Pixel (if needed)
+<% if (typeof facebookPixelId !== 'undefined' && facebookPixelId) { %>
+!function(f,b,e,v,n,t,s)
+{if(f.fbq)return;n=f.fbq=function(){n.callMethod?
+n.callMethod.apply(n,arguments):n.queue.push(arguments)};
+if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';
+n.queue=[];t=b.createElement(e);t.async=!0;
+t.src=v;s=b.getElementsByTagName(e)[0];
+s.parentNode.insertBefore(t,s)}(window, document,'script',
+'https://connect.facebook.net/en_US/fbevents.js');
+fbq('init', '<%= facebookPixelId %>');
+fbq('track', 'PageView');
+<% } %>
 </script>
+
+<% if (typeof facebookPixelId !== 'undefined' && facebookPixelId) { %>
+<noscript>
+    <img height="1" width="1" style="display:none"
+         src="https://www.facebook.com/tr?id=<%= facebookPixelId %>&ev=PageView&noscript=1"/>
+</noscript>
+<% } %>
+
+<!-- Additional mobile menu styles -->
+<style>
+@media (max-width: 768px) {
+    .menu-toggle {
+        display: block;
+        background: none;
+        border: none;
+        font-size: 24px;
+        color: var(--theme-palette-color-3);
+        cursor: pointer;
+        padding: 0.5rem;
+        z-index: 1001;
+    }
+    
+    .header-menu {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100vh;
+        background: var(--theme-palette-color-8);
+        z-index: 1000;
+        padding: 80px 20px 20px;
+        overflow-y: auto;
+    }
+    
+    .header-menu.active {
+        display: block;
+        animation: slideInRight 0.3s ease;
+    }
+    
+    .header-menu .menu {
+        flex-direction: column;
+        gap: 0;
+    }
+    
+    .menu-item {
+        border-bottom: 1px solid var(--theme-palette-color-5);
+    }
+    
+    .menu-item a {
+        display: block;
+        padding: 1rem 0;
+        font-size: 18px;
+    }
+    
+    @keyframes slideInRight {
+        from {
+            transform: translateX(100%);
+        }
+        to {
+            transform: translateX(0);
+        }
+    }
+}
+</style>
+
+<!-- JSON-LD Structured Data -->
+<script type="application/ld+json">
+{
+    "@context": "https://schema.org",
+    "@type": "Organization",
+    "name": "Bot Inteligente",
+    "url": "<%= canonicalUrl || 'https://botinteligente.com.mx/' %>",
+    "logo": "<%= canonicalUrl || 'https://botinteligente.com.mx/' %>images/logo.png",
+    "description": "<%= pageDescription || 'Confía en la inteligencia que vende por ti' %>",
+    "address": {
+        "@type": "PostalAddress",
+        "addressCountry": "MX"
+    },
+    "contactPoint": {
+        "@type": "ContactPoint",
+        "telephone": "+52-22-0600-6275",
+        "contactType": "customer service",
+        "availableLanguage": "Spanish"
+    },
+    "sameAs": [
+        "https://www.facebook.com/botinteligente",
+        "https://www.instagram.com/botinteligente"
+    ]
+}
+</script>
+
+<script type="application/ld+json">
+{
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    "mainEntity": [
+        {
+            "@type": "Question",
+            "name": "¿Cómo se configura el chatbot para mi negocio?",
+            "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "Tu bot se conecta a tu WhatsApp mediante un código QR, sin complicaciones técnicas. Analizamos tu negocio y las preguntas frecuentes de tus clientes, diseñamos los flujos de conversación, configuramos las integraciones y en solo 1 a 2 días hábiles tu bot está listo para atender y vender automáticamente."
+            }
+        },
+        {
+            "@type": "Question",
+            "name": "¿Qué resultados puedo esperar después de implementar el chatbot?",
+            "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "Nuestros clientes logran reducir hasta un 90% del tiempo de respuesta, aumentar sus consultas atendidas y cerrar más ventas gracias a la atención inmediata y constante del bot."
+            }
+        },
+        {
+            "@type": "Question",
+            "name": "¿Cuál es el costo del servicio?",
+            "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "El desarrollo inicial tiene un costo desde $1,500 MXN, e incluye personalización completa. Además, ofrecemos mantenimiento mensual por $499 MXN, que cubre soporte, mejoras y actualizaciones."
+            }
+        }
+    ]
+}
+</script>
+
 </body>
 </html>
