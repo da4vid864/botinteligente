@@ -168,6 +168,7 @@ function initializeWhatsApp() {
                 
                 if (!lead || !lead.id) return;
                 
+                // 1. Guardamos el mensaje del usuario en la BD
                 await addLeadMessage(lead.id, 'user', userMessage);
 
                 if (lead.status === 'assigned') {
@@ -180,8 +181,8 @@ function initializeWhatsApp() {
                 }
 
                 if (lead.status === 'capturing') {
+                    // Lógica de extracción de datos (sin cambios)
                     const extractedInfo = await extractLeadInfo(userMessage);
-                    
                     if (Object.keys(extractedInfo).length > 0) {
                         lead = await updateLeadInfo(lead.id, extractedInfo);
                     }
@@ -207,9 +208,17 @@ function initializeWhatsApp() {
                         DEBES incluir la etiqueta [ENVIAR_IMAGEN: palabra_clave] al final de tu respuesta.`;
                     }
 
+                    // === CORRECCIÓN 1: CONTEXTO ===
+                    // Obtenemos los mensajes de la BD (esto incluye el que acabamos de guardar)
                     const messages = await getLeadMessages(lead.id, 20);
-                    const history = messages.map(m => ({
-                        role: m.sender === 'user' ? 'user' : 'assistant',
+                    
+                    // Eliminamos el último mensaje (pop o slice) porque deepseekService.js 
+                    // ya agrega el 'userMessage' actual al final del array. 
+                    // Si no hacemos esto, la IA ve el mensaje duplicado.
+                    const historyMessages = messages.slice(0, -1);
+
+                    const history = historyMessages.map(m => ({
+                        role: m.sender === 'user' ? 'user' : 'assistant', // Mapeamos 'bot' a 'assistant'
                         content: m.message
                     }));
                     
@@ -222,13 +231,21 @@ function initializeWhatsApp() {
                         botReply = aiResponse;
                     }
                     
-                    const imageTagRegex = /\$\$ENVIAR_IMAGEN:\s*(.+?)\$\$/i;
+                    // === CORRECCIÓN 2: IMÁGENES ===
+                    // Cambiamos el Regex para buscar [ ] en lugar de $$ $$
+                    // Esto coincide con la instrucción del prompt: [ENVIAR_IMAGEN: palabra_clave]
+                    const imageTagRegex = /\$\$\s*ENVIAR_IMAGEN:\s*([\s\S]+?)\s*\$\$/i;
+                    
                     const match = botReply.match(imageTagRegex);
                     let imageToSend = null;
 
                     if (match) {
                         const keyword = match[1].trim().toLowerCase();
+                        console.log(`[${botConfig.id}] 🖼️ IA solicitó imagen con keyword: "${keyword}"`);
+                        
                         imageToSend = availableImages.find(img => img.keyword === keyword);
+                        
+                        // Limpiamos la etiqueta del texto que se envía al usuario
                         botReply = botReply.replace(match[0], '').trim();
                     }
 
